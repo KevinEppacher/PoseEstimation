@@ -1,0 +1,22 @@
+1. Objektdefinition und Datenerfassung
+
+    Objektdefinition: Wählen Sie ein flaches Objekt, wie z.B. ein Buchcover oder ein gedrucktes Bild, das klare und unterscheidbare Merkmale hat.
+    Datenerfassung: Erstellen Sie ein hochauflösendes Foto und ein kurzes Video des Objekts. Dieses Material wird verwendet, um die Merkmale des Objekts zu lernen und später die Pose des Objekts in Videoaufnahmen zu schätzen.
+
+2. Einlernen des Objekts
+
+    Extraktion von SIFT Features: Verwenden Sie OpenCV, um SIFT-Features und Deskriptoren aus dem Bild Ihres Objekts zu extrahieren. Speichern Sie diese Informationen in einer CSV- oder YAML-Datei.
+    Speichern des Trainingsbildes: Speichern Sie das Bild, das Sie für das Einlernen verwendet haben, als Referenz.
+
+3. Definition von nutzbaren Merkmalen
+
+    Erstellung von activeSet.csv: Identifizieren und speichern Sie die Indizes der SIFT-Features, die als aussagekräftig genug für die Pose Estimation angesehen werden, in activeSet.csv.
+    Erstellung von activeSet_XYZ.csv: Messen Sie die X, Y, Z Koordinaten (wobei Z=0 für flache Objekte) der ausgewählten Merkmale am physischen Objekt und speichern Sie diese in activeSet_XYZ.csv.
+
+4. Pose Estimation
+
+    Kalibrierung der Kamera: Kalibrieren Sie Ihre Kamera, um die Kameramatrix und die Verzerrungskoeffizienten zu erhalten. Nutzen Sie OpenCV’s undistort Funktion, um die Bildverzerrungen zu korrigieren.
+    Merkmalsextraktion aus dem Video: Extrahieren Sie SIFT-Features aus jedem Frame des Videos.
+    Matching der Features: Verwenden Sie den Brute-Force-Matcher von OpenCV, um Korrespondenzen zwischen den Trainings- und Videobild-Features basierend auf den Deskriptoren zu finden.
+    2D-3D Korrespondenz: Erstellen Sie aus den gematchten Punkten 2D- und 3D-Datenstrukturen für die Nutzung in solvePnP.
+    Anwendung von solvePnP: Nutzen Sie solvePnP, um die Rotation und Translation des Objekts relativ zur Kamera zu berechnen. Die Ergebnisse zeigen die Pose des Objekts in Bezug auf die Kamera.
