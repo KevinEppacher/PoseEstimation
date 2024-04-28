@@ -1,12 +1,10 @@
-#include <opencv2/opencv.hpp>
-#include <opencv2/xfeatures2d.hpp>
-#include <fstream>
+#include "ComputerVision.h" // Assuming the class definition is in this header
 
-int main() 
+int main()
 {
-    cv::Mat imgSIFT, imgSIFT2;
-
-
-
+    ComputerVision::FeatureExtraction extractor("/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png");
+    
+    extractor.extractFeaturesAndDescriptors();
+    
     return 0;
 }
