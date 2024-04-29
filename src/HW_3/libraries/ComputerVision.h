@@ -16,6 +16,7 @@ private:
     cv::Mat inputImage;
     cv::Mat outputImage;
     cv::Mat descriptors;
+    double contrastThreshold;
 
 public:
     FeatureExtraction(const std::string& imagePath) 
@@ -28,7 +29,7 @@ public:
         } 
     }
 
-    void extractFeaturesAndDescriptors()
+    void extractFeaturesAndDescriptors(double contrastThreshold = 0.04)
     {
         if (inputImage.empty()) 
         {
@@ -36,7 +37,7 @@ public:
             return;
         }
 
-        cv::Ptr<cv::SiftFeatureDetector> detector = cv::SiftFeatureDetector::create();
+        cv::Ptr<cv::SiftFeatureDetector> detector = cv::SiftFeatureDetector::create(0, 3, contrastThreshold, 10, 1.6);
         
         std::vector<cv::KeyPoint> keypoints;
 
@@ -49,10 +50,8 @@ public:
         cv::imwrite("sift_result.jpg", outputImage);
 
         cv::imshow("Detected Features", outputImage);
-
-        saveToYAML("features.yml", keypoints);
         
-        saveToCSV("features.csv", keypoints);
+        saveToCSV("activeSet.csv", keypoints);
         
         cv::waitKey(0);
     }
