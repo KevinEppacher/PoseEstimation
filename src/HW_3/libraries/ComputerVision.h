@@ -8,11 +8,10 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <fstream>
 
-
 cv::Mat loadImage(const std::string &imagePath)
 {
     cv::Mat inputImage = cv::imread(imagePath, cv::IMREAD_GRAYSCALE);
-    
+
     if (inputImage.empty())
     {
         std::cerr << "Error: Image not found or unable to read." << std::endl;
@@ -25,9 +24,53 @@ cv::Mat loadImage(const std::string &imagePath)
     return inputImage;
 }
 
+std::map<int, cv::Point3f> LoadXYZCoordinates(const std::string &filename)
+{
+    std::map<int, cv::Point3f> coordinatesMap;
+    std::ifstream file(filename);
+
+    if (!file)
+    {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return coordinatesMap;
+    }
+
+    std::string line;
+    // Skip the header line if present
+    std::getline(file, line);
+
+    while (std::getline(file, line))
+    {
+        std::stringstream ss(line);
+        std::string indexStr, xStr, yStr, zStr;
+        int index;
+        float x, y, z;
+
+        std::getline(ss, indexStr, ',');
+        std::getline(ss, xStr, ',');
+        std::getline(ss, yStr, ',');
+        std::getline(ss, zStr, ',');
+
+        // Convert strings to appropriate types
+        index = std::stoi(indexStr);
+        x = std::stof(xStr);
+        y = std::stof(yStr);
+        z = std::stof(zStr);
+
+        // std::cout<<" index: "<<index<<" x: "<<x<<" y: "<<y<<" z: "<<z<<std::endl;
+
+        // Insert into the map
+        coordinatesMap[index] = cv::Point3f(x, y, z);
+    }
+
+    file.close();
+
+    return coordinatesMap;
+}
 
 namespace ComputerVision
-{
+{        
+
     class FeatureExtraction
     {
     private:
@@ -35,17 +78,20 @@ namespace ComputerVision
         cv::Mat outputImage;
         cv::Mat descriptors;
         std::vector<cv::KeyPoint> keypoints;
-        double contrastThreshold; // Variable für den Kontrastschwellenwert
-        int contrastThresholdInt; // Variable zum Speichern des Kontrastschwellenwerts als Integer
-
+        double contrastThreshold;
+        int contrastThresholdInt; 
 
     public:
         FeatureExtraction(const std::string &imagePath)
         {
             inputImage = loadImage(imagePath);
-            contrastThreshold = 0.026;
+            contrastThreshold = 0.26;
             contrastThresholdInt = 26;
         }
+
+        FeatureExtraction(){};
+
+
 
         // Methode zum Setzen des Kontrastschwellenwerts
         void setContrastThreshold(double value)
@@ -54,17 +100,21 @@ namespace ComputerVision
             contrastThresholdInt = static_cast<int>(value * 100); // Umrechnen in einen Integer-Wert im Bereich [0, 100]
         }
 
-        // Methode zum Extrahieren von Merkmalen und Deskriptoren
-        void extractFeaturesAndDescriptors()
-        {
-            if (inputImage.empty())
-            {
-                std::cerr << "Error: No valid image loaded for feature detection." << std::endl;
-                return;
-            }
 
-            while (true)
+        // Methode zum Erstellen des Trackbars
+        void computeKeypointsAndDescriptors()
+        {
+            // Fenster erstellen
+            cv::namedWindow("Trackbar");
+
+            // Trackbar erstellen
+            cv::createTrackbar("Contrast Threshold", "Trackbar", &contrastThresholdInt, 100, onTrackbar, this);
+
+            bool isRunning = true;
+
+            while (isRunning)
             {
+
                 // Merkmale und Deskriptoren mit dem aktuellen Kontrastschwellenwert erkennen und berechnen
                 detectAndComputeKeypointsAndDescriptors(inputImage, contrastThreshold, keypoints, descriptors);
 
@@ -72,29 +122,32 @@ namespace ComputerVision
 
                 drawIndexesToImage(outputImage, keypoints);
 
-                cv::imwrite("sift_result.jpg", outputImage);
+                cv::imshow("Calibrate Hyperparameter Contstrast Threshold", outputImage);
 
-                cv::imshow("Detected Features", outputImage);
+                // Warte auf eine Taste, warte maximal 10 ms
+                int key = cv::waitKey(10);
 
-                saveToCSV("activeSet.csv", keypoints);
-
-                // cv::waitKey(0);
-
-                cv::waitKey(10);
+                // Überprüfe, ob eine Taste gedrückt wurde
+                if (key != -1)
+                {
+                    std::cout << "Key pressed: " << key << std::endl;
+                    isRunning = false; // Beende die Schleife
+                }
             }
-            
 
+            cv::imwrite("sift_result.jpg", outputImage);
+
+            saveToCSV("activeSet.csv", keypoints);
+
+            cv::destroyAllWindows();
 
         }
 
-        // Methode zum Erstellen des Trackbars
-        void createTrackbar()
-        {
-            // Fenster erstellen
-            cv::namedWindow("Trackbar");
 
-            // Trackbar erstellen
-            cv::createTrackbar("Contrast Threshold", "Trackbar", &contrastThresholdInt, 100, onTrackbar, this);
+
+        cv::Mat getImage()
+        {
+            return inputImage;
         }
 
         cv::Mat getDescriptor()
@@ -113,8 +166,6 @@ namespace ComputerVision
         // Methode zum Erstellen der Merkmale und Deskriptoren
         void detectAndComputeKeypointsAndDescriptors(const cv::Mat &inputImage, double &contrastThreshold, std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors)
         {
-            std::cout << " contrastThreshold: " << contrastThreshold << std::endl;
-
             // Creating a SIFT feature detector with custom parameters
             cv::Ptr<cv::SiftFeatureDetector> detector = cv::SiftFeatureDetector::create(
                 0,                 // Number of desired levels in the DoG pyramid construction. 0 means automatic level adjustment.
@@ -175,11 +226,10 @@ namespace ComputerVision
             FeatureExtraction *fe = static_cast<FeatureExtraction *>(userdata);
 
             double contrastThreshold = static_cast<double>(value) / 100.0;
-            
+
             fe->setContrastThreshold(contrastThreshold);
         }
     };
-
 
     class CameraCalibrator
     {
@@ -247,4 +297,30 @@ namespace ComputerVision
         }
     };
 
+    // void computeBruteForceMatching(std::vector<cv::KeyPoint>& trainingKeypoints, std::vector<cv::KeyPoint>& validationKeypoints, cv::Mat& trainingDescriptor, cv::Mat& validationDescriptor, cv::Mat& trainingImage, cv::Mat& validationImage)
+    void computeBruteForceMatching(FeatureExtraction training, FeatureExtraction validation)
+    {
+        std::vector<cv::KeyPoint> trainingKeypoints = training.getKeypoints();
+        std::vector<cv::KeyPoint> validationKeypoints = validation.getKeypoints();
+        cv::Mat trainingDescription = training.getDescriptor();
+        cv::Mat validationDescription = validation.getDescriptor();
+        cv::Mat trainingImage = training.getImage(); cv::Mat validationImage = validation.getImage();
+
+        cv::BFMatcher bf(cv::NORM_L2);
+
+        std::vector<cv::DMatch> matches;
+        bf.match(trainingDescription, validationDescription, matches);
+
+        std::sort(matches.begin(), matches.end(), [](const cv::DMatch& a, const cv::DMatch& b) { return a.distance < b.distance; });
+
+        cv::Mat img_matches;
+        
+        cv::drawMatches(trainingImage, trainingKeypoints, validationImage, validationKeypoints, matches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+        
+        cv::imshow("Matches", img_matches);
+        
+        cv::waitKey(0);
+        
+        cv::destroyAllWindows();
+    }
 }
