@@ -3,7 +3,8 @@
 #include <opencv2/opencv.hpp>
 #include "ComputerVision.h" // Annahme: ComputerVision.h enthält die Deklarationen der Klassen und Funktionen für Feature-Extraktion und Brute-Force-Matching
 
-int main() {
+int main()
+{
     // Pfad zum Video
     std::string videoPath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_video_real.mp4";
 
@@ -11,7 +12,8 @@ int main() {
     cv::VideoCapture cap(videoPath);
 
     // Überprüfen, ob das Video geöffnet werden kann
-    if (!cap.isOpened()) {
+    if (!cap.isOpened())
+    {
         std::cerr << "Fehler beim Öffnen des Videos!" << std::endl;
         return -1;
     }
@@ -22,18 +24,21 @@ int main() {
     cv::Mat frame, grayFrame;
 
     // Alle Frames aus dem Video lesen und im Vektor speichern
-    while (cap.read(frame)) {
+    while (cap.read(frame))
+    {
         frames.push_back(frame.clone()); // Kopie des Frames hinzufügen, um unerwartetes Verhalten zu vermeiden
     }
 
     // Überprüfen, ob Frames vorhanden sind
-    if (frames.empty()) {
+    if (frames.empty())
+    {
         std::cerr << "Keine Frames im Video gefunden!" << std::endl;
         return -1;
     }
 
     // Iteration über alle Frames im Vektor
-    for (auto frame : frames) {
+    for (auto frame : frames)
+    {
         // Frame in Graustufen umwandeln
         cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
 
