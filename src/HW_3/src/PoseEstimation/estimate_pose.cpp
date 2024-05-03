@@ -26,7 +26,9 @@ int main()
     // Alle Frames aus dem Video lesen und im Vektor speichern
     while (cap.read(frame))
     {
-        frames.push_back(frame.clone()); // Kopie des Frames hinzufügen, um unerwartetes Verhalten zu vermeiden
+        cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
+
+        frames.push_back(grayFrame.clone()); // Kopie des Frames hinzufügen, um unerwartetes Verhalten zu vermeiden
     }
 
     // Überprüfen, ob Frames vorhanden sind
@@ -39,18 +41,16 @@ int main()
     // Iteration über alle Frames im Vektor
     for (auto frame : frames)
     {
-        // Frame in Graustufen umwandeln
-        cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
-
         std::string trainingImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png";
 
+        // Feature-Extraktion für das aktuelle Frame
+        ComputerVision::FeatureExtraction validation(frame);
+        validation.computeKeypointsAndDescriptors(false);
+        
         // Feature-Extraktion für das Trainingsbild
         ComputerVision::FeatureExtraction training(trainingImagePath);
         training.computeKeypointsAndDescriptors(false);
 
-        // Feature-Extraktion für das aktuelle Frame
-        ComputerVision::FeatureExtraction validation(grayFrame);
-        validation.computeKeypointsAndDescriptors(false);
 
         // Ausführen des Brute-Force-Matchings und Anzeigen des Ergebnisses
         cv::Mat outputImage;

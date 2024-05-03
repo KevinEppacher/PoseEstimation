@@ -138,7 +138,6 @@ namespace ComputerVision
                 saveToCSV("activeSet.csv", keypoints);
 
                 cv::destroyAllWindows();
-
             }
             else
             {
@@ -147,9 +146,7 @@ namespace ComputerVision
                 cv::drawKeypoints(inputImage, keypoints, outputImage);
 
                 drawIndexesToImage(outputImage, keypoints);
-
             }
-
         }
 
         cv::Mat getImage()
@@ -304,8 +301,22 @@ namespace ComputerVision
         }
     };
 
+    std::vector<cv::DMatch> computeMatches(const cv::Mat& trainingDescription, const cv::Mat& validationDescription)
+    {
+        std::vector<cv::DMatch> matches;
+
+        cv::BFMatcher bf(cv::NORM_L2);
+
+        bf.match(trainingDescription, validationDescription, matches);
+
+        std::sort(matches.begin(), matches.end(), [](const cv::DMatch &a, const cv::DMatch &b)
+                  { return a.distance < b.distance; });
+
+        return matches;
+    }
+    
     // void computeBruteForceMatching(std::vector<cv::KeyPoint>& trainingKeypoints, std::vector<cv::KeyPoint>& validationKeypoints, cv::Mat& trainingDescriptor, cv::Mat& validationDescriptor, cv::Mat& trainingImage, cv::Mat& validationImage)
-    void computeBruteForceMatching(FeatureExtraction training, FeatureExtraction validation, cv::Mat& ouputImage)
+    void computeBruteForceMatching(FeatureExtraction training, FeatureExtraction validation, cv::Mat &ouputImage)
     {
         std::vector<cv::KeyPoint> trainingKeypoints = training.getKeypoints();
         std::vector<cv::KeyPoint> validationKeypoints = validation.getKeypoints();
@@ -314,13 +325,15 @@ namespace ComputerVision
         cv::Mat trainingImage = training.getImage();
         cv::Mat validationImage = validation.getImage();
 
-        cv::BFMatcher bf(cv::NORM_L2);
+        // cv::BFMatcher bf(cv::NORM_L2);
 
-        std::vector<cv::DMatch> matches;
-        bf.match(trainingDescription, validationDescription, matches);
+        // std::vector<cv::DMatch> matches;
+        // bf.match(trainingDescription, validationDescription, matches);
 
-        std::sort(matches.begin(), matches.end(), [](const cv::DMatch &a, const cv::DMatch &b)
-                  { return a.distance < b.distance; });
+        // std::sort(matches.begin(), matches.end(), [](const cv::DMatch &a, const cv::DMatch &b)
+        //           { return a.distance < b.distance; });
+
+        std::vector<cv::DMatch> matches = ComputerVision::computeMatches(trainingDescription, validationDescription);
 
         cv::Mat img_matches;
 
@@ -334,4 +347,6 @@ namespace ComputerVision
 
         // cv::destroyAllWindows();
     }
+
+
 }
