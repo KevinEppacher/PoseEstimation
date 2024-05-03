@@ -1,27 +1,75 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/xfeatures2d.hpp>
+#include <opencv2/opencv.hpp>
 #include <iostream>
 #include <vector>
 #include "ComputerVision.h"
 
 int main()
 {
+    // Öffne das Video
+    cv::VideoCapture cap("/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_video_real.mp4");
 
-    std::string trainingImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png";
+    // Überprüfe, ob das Video erfolgreich geöffnet wurde
+    if (!cap.isOpened())
+    {
+        std::cerr << "Fehler beim Öffnen des Videos!" << std::endl;
+        return -1;
+    }
 
-    std::string validateImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image_real.png";
+    cv::Mat frame, grayFrame;
 
-    ComputerVision::FeatureExtraction validation(validateImagePath);
+    // std::string trainingImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png";
 
-    ComputerVision::FeatureExtraction training(trainingImagePath);
+    // std::string validateImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image_real.png";
 
-    validation.computeKeypointsAndDescriptors();
+    // ComputerVision::FeatureExtraction validation(validateImagePath);
 
-    training.computeKeypointsAndDescriptors();
+    // ComputerVision::FeatureExtraction training(trainingImagePath);
 
-    ComputerVision::computeBruteForceMatching(training, validation);
+    // validation.computeKeypointsAndDescriptors();
 
+    // training.computeKeypointsAndDescriptors();
+
+    // ComputerVision::computeBruteForceMatching(training, validation);
+
+    // Schleife zum Durchlaufen jedes Frames im Video
+    while (true)
+    {
+        // // Lese das nächste Frame
+        cv::Mat frame;
+        cap >> frame;
+
+        cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
+
+        std::string trainingImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png";
+
+        ComputerVision::FeatureExtraction training(trainingImagePath);
+
+        ComputerVision::FeatureExtraction validation(grayFrame);
+
+        bool trackbar = false;
+
+        training.computeKeypointsAndDescriptors(trackbar);
+
+        validation.computeKeypointsAndDescriptors(trackbar);
+
+        cv::Mat outputImage;
+
+        ComputerVision::computeBruteForceMatching(training, validation, outputImage);
+
+        cv::imshow("Brute Force Matching", outputImage);
+
+        // cv::waitKey(100);
+
+        if (cv::waitKey(10) == 27)
+            break;
+    }
+
+    // Schließe das Video
+    cap.release();
+    cv::destroyAllWindows();
 
     return 0;
 }

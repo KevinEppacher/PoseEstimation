@@ -8,8 +8,8 @@ INCLUDES = -I/usr/local/include/opencv4 \
            -I/home/fhtw_user/catkin_ws/src/HW_3/libraries
 
 # Linker Flags und Bibliotheken
-LFLAGS = -L/usr/local/lib
-LIBS = -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_features2d -lopencv_xfeatures2d
+LFLAGS = -L/usr/local/lib -L/usr/local/include/opencv4/opencv2
+LIBS = -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_features2d -lopencv_xfeatures2d -lopencv_videoio
 
 # Quelldateien und Objektdateien
 SRCS = estimate_pose.cpp

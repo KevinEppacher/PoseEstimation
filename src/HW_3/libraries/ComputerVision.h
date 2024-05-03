@@ -69,7 +69,7 @@ std::map<int, cv::Point3f> LoadXYZCoordinates(const std::string &filename)
 }
 
 namespace ComputerVision
-{        
+{
 
     class FeatureExtraction
     {
@@ -79,7 +79,7 @@ namespace ComputerVision
         cv::Mat descriptors;
         std::vector<cv::KeyPoint> keypoints;
         double contrastThreshold;
-        int contrastThresholdInt; 
+        int contrastThresholdInt;
 
     public:
         FeatureExtraction(const std::string &imagePath)
@@ -91,7 +91,7 @@ namespace ComputerVision
 
         FeatureExtraction(){};
 
-
+        FeatureExtraction(const cv::Mat &inputImage) : inputImage(inputImage){};
 
         // Methode zum Setzen des Kontrastschwellenwerts
         void setContrastThreshold(double value)
@@ -100,50 +100,57 @@ namespace ComputerVision
             contrastThresholdInt = static_cast<int>(value * 100); // Umrechnen in einen Integer-Wert im Bereich [0, 100]
         }
 
-
         // Methode zum Erstellen des Trackbars
-        void computeKeypointsAndDescriptors()
+        void computeKeypointsAndDescriptors(bool withTrackbar)
         {
-            // Fenster erstellen
-            cv::namedWindow("Trackbar");
-
-            // Trackbar erstellen
-            cv::createTrackbar("Contrast Threshold", "Trackbar", &contrastThresholdInt, 100, onTrackbar, this);
 
             bool isRunning = true;
 
-            while (isRunning)
+            if (withTrackbar)
             {
+                // Fenster erstellen
+                cv::namedWindow("Trackbar");
 
-                // Merkmale und Deskriptoren mit dem aktuellen Kontrastschwellenwert erkennen und berechnen
+                // Trackbar erstellen
+                cv::createTrackbar("Contrast Threshold", "Trackbar", &contrastThresholdInt, 100, onTrackbar, this);
+
+                while (isRunning)
+                {
+                    detectAndComputeKeypointsAndDescriptors(inputImage, contrastThreshold, keypoints, descriptors);
+
+                    cv::drawKeypoints(inputImage, keypoints, outputImage);
+
+                    drawIndexesToImage(outputImage, keypoints);
+
+                    cv::imshow("Calibrate Hyperparameter Contstrast Threshold", outputImage);
+
+                    int key = cv::waitKey(10);
+
+                    if (key != -1)
+                    {
+                        std::cout << "Key pressed: " << key << std::endl;
+                        isRunning = false; // Beende die Schleife
+                    }
+                }
+
+                cv::imwrite("sift_result.jpg", outputImage);
+
+                saveToCSV("activeSet.csv", keypoints);
+
+                cv::destroyAllWindows();
+
+            }
+            else
+            {
                 detectAndComputeKeypointsAndDescriptors(inputImage, contrastThreshold, keypoints, descriptors);
 
                 cv::drawKeypoints(inputImage, keypoints, outputImage);
 
                 drawIndexesToImage(outputImage, keypoints);
 
-                cv::imshow("Calibrate Hyperparameter Contstrast Threshold", outputImage);
-
-                // Warte auf eine Taste, warte maximal 10 ms
-                int key = cv::waitKey(10);
-
-                // Überprüfe, ob eine Taste gedrückt wurde
-                if (key != -1)
-                {
-                    std::cout << "Key pressed: " << key << std::endl;
-                    isRunning = false; // Beende die Schleife
-                }
             }
 
-            cv::imwrite("sift_result.jpg", outputImage);
-
-            saveToCSV("activeSet.csv", keypoints);
-
-            cv::destroyAllWindows();
-
         }
-
-
 
         cv::Mat getImage()
         {
@@ -298,29 +305,33 @@ namespace ComputerVision
     };
 
     // void computeBruteForceMatching(std::vector<cv::KeyPoint>& trainingKeypoints, std::vector<cv::KeyPoint>& validationKeypoints, cv::Mat& trainingDescriptor, cv::Mat& validationDescriptor, cv::Mat& trainingImage, cv::Mat& validationImage)
-    void computeBruteForceMatching(FeatureExtraction training, FeatureExtraction validation)
+    void computeBruteForceMatching(FeatureExtraction training, FeatureExtraction validation, cv::Mat& ouputImage)
     {
         std::vector<cv::KeyPoint> trainingKeypoints = training.getKeypoints();
         std::vector<cv::KeyPoint> validationKeypoints = validation.getKeypoints();
         cv::Mat trainingDescription = training.getDescriptor();
         cv::Mat validationDescription = validation.getDescriptor();
-        cv::Mat trainingImage = training.getImage(); cv::Mat validationImage = validation.getImage();
+        cv::Mat trainingImage = training.getImage();
+        cv::Mat validationImage = validation.getImage();
 
         cv::BFMatcher bf(cv::NORM_L2);
 
         std::vector<cv::DMatch> matches;
         bf.match(trainingDescription, validationDescription, matches);
 
-        std::sort(matches.begin(), matches.end(), [](const cv::DMatch& a, const cv::DMatch& b) { return a.distance < b.distance; });
+        std::sort(matches.begin(), matches.end(), [](const cv::DMatch &a, const cv::DMatch &b)
+                  { return a.distance < b.distance; });
 
         cv::Mat img_matches;
-        
+
         cv::drawMatches(trainingImage, trainingKeypoints, validationImage, validationKeypoints, matches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-        
-        cv::imshow("Matches", img_matches);
-        
-        cv::waitKey(0);
-        
-        cv::destroyAllWindows();
+
+        ouputImage = img_matches;
+
+        // cv::imshow("Matches", img_matches);
+
+        // cv::waitKey(100);
+
+        // cv::destroyAllWindows();
     }
 }
