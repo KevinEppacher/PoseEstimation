@@ -10,7 +10,7 @@
 
 cv::Mat loadImage(const std::string &imagePath)
 {
-    cv::Mat inputImage = cv::imread(imagePath, cv::IMREAD_GRAYSCALE);
+    cv::Mat inputImage = cv::imread(imagePath);
 
     if (inputImage.empty())
     {
@@ -316,7 +316,7 @@ namespace ComputerVision
     }
     
     // void computeBruteForceMatching(std::vector<cv::KeyPoint>& trainingKeypoints, std::vector<cv::KeyPoint>& validationKeypoints, cv::Mat& trainingDescriptor, cv::Mat& validationDescriptor, cv::Mat& trainingImage, cv::Mat& validationImage)
-    void computeBruteForceMatching(FeatureExtraction training, FeatureExtraction validation, cv::Mat &ouputImage)
+    void computeBruteForceMatching(FeatureExtraction& training, FeatureExtraction& validation, cv::Mat &ouputImage, int maxMatches = 100)
     {
         std::vector<cv::KeyPoint> trainingKeypoints = training.getKeypoints();
         std::vector<cv::KeyPoint> validationKeypoints = validation.getKeypoints();
@@ -325,28 +325,73 @@ namespace ComputerVision
         cv::Mat trainingImage = training.getImage();
         cv::Mat validationImage = validation.getImage();
 
-        // cv::BFMatcher bf(cv::NORM_L2);
-
-        // std::vector<cv::DMatch> matches;
-        // bf.match(trainingDescription, validationDescription, matches);
-
-        // std::sort(matches.begin(), matches.end(), [](const cv::DMatch &a, const cv::DMatch &b)
-        //           { return a.distance < b.distance; });
-
         std::vector<cv::DMatch> matches = ComputerVision::computeMatches(trainingDescription, validationDescription);
 
         cv::Mat img_matches;
+
+        if (matches.size() > maxMatches)
+        {
+            matches.resize(maxMatches);
+        }
 
         cv::drawMatches(trainingImage, trainingKeypoints, validationImage, validationKeypoints, matches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
         ouputImage = img_matches;
 
-        // cv::imshow("Matches", img_matches);
-
-        // cv::waitKey(100);
-
-        // cv::destroyAllWindows();
     }
+
+    class Video
+    {
+    private:
+        cv::VideoCapture cap;
+        double fps;
+        std::vector<cv::Mat> frames;
+        cv::Mat frame;
+
+    public:
+        Video(const std::string& videoPath) : cap(videoPath)
+        {
+            cap.open(videoPath);
+            if (!cap.isOpened())
+            {
+                throw std::runtime_error("Fehler beim Öffnen des Videos!");
+            }
+
+            fps = cap.get(cv::CAP_PROP_FPS);
+
+            while (cap.read(frame))
+            {
+                frames.push_back(frame.clone());
+            }
+
+            if (frames.empty())
+            {
+                throw std::runtime_error("Keine Frames im Video gefunden!");
+            }
+        }
+
+        ~Video() {}
+
+
+
+        void putFpsOnImage(cv::Mat& image)
+        {
+            std::ostringstream oss;
+            oss << "FPS: " << fps;
+            cv::putText(image, oss.str(), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+        }
+
+        double getFPS()
+        {
+            return fps;
+        }
+
+        std::vector<cv::Mat> getFrames()
+        {
+            return frames;
+        }
+
+    };
 
 
 }
