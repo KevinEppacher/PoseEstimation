@@ -24,48 +24,45 @@ cv::Mat loadImage(const std::string &imagePath)
     return inputImage;
 }
 
-std::map<int, cv::Point3f> LoadXYZCoordinates(const std::string &filename)
+std::map<int, cv::Point3f> LoadXYZCoordinates(const std::string& filePath)
 {
-    std::map<int, cv::Point3f> coordinatesMap;
-    std::ifstream file(filename);
+    std::map<int, cv::Point3f> coordinates;
 
-    if (!file)
+    // Datei öffnen
+    std::ifstream file(filePath);
+    if (!file.is_open())
     {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return coordinatesMap;
+        std::cerr << "Fehler beim Öffnen der Datei: " << filePath << std::endl;
+        return coordinates;
     }
 
+    // Header-Zeile überspringen
     std::string line;
-    // Skip the header line if present
     std::getline(file, line);
 
+    // Zeilen einlesen und verarbeiten
     while (std::getline(file, line))
     {
-        std::stringstream ss(line);
-        std::string indexStr, xStr, yStr, zStr;
+        std::istringstream iss(line);
         int index;
+        char comma;
         float x, y, z;
 
-        std::getline(ss, indexStr, ',');
-        std::getline(ss, xStr, ',');
-        std::getline(ss, yStr, ',');
-        std::getline(ss, zStr, ',');
+        // CSV-Werte einlesen
+        if (!(iss >> index >> comma >> x >> comma >> y >> comma >> z))
+        {
+            std::cerr << "Ungültiges CSV-Format in Zeile: " << line << std::endl;
+            continue;
+        }
 
-        // Convert strings to appropriate types
-        index = std::stoi(indexStr);
-        x = std::stof(xStr);
-        y = std::stof(yStr);
-        z = std::stof(zStr);
-
-        // std::cout<<" index: "<<index<<" x: "<<x<<" y: "<<y<<" z: "<<z<<std::endl;
-
-        // Insert into the map
-        coordinatesMap[index] = cv::Point3f(x, y, z);
+        // Punkt erstellen und in die Map einfügen
+        coordinates[index] = cv::Point3f(x, y, z);
     }
 
+    // Datei schließen
     file.close();
 
-    return coordinatesMap;
+    return coordinates;
 }
 
 namespace ComputerVision
@@ -93,14 +90,12 @@ namespace ComputerVision
 
         FeatureExtraction(const cv::Mat &inputImage) : inputImage(inputImage){};
 
-        // Methode zum Setzen des Kontrastschwellenwerts
         void setContrastThreshold(double value)
         {
             contrastThreshold = value;
             contrastThresholdInt = static_cast<int>(value * 100); // Umrechnen in einen Integer-Wert im Bereich [0, 100]
         }
 
-        // Methode zum Erstellen des Trackbars
         void computeKeypointsAndDescriptors(bool withTrackbar)
         {
 
@@ -301,45 +296,6 @@ namespace ComputerVision
         }
     };
 
-    std::vector<cv::DMatch> computeMatches(const cv::Mat& trainingDescription, const cv::Mat& validationDescription)
-    {
-        std::vector<cv::DMatch> matches;
-
-        cv::BFMatcher bf(cv::NORM_L2);
-
-        bf.match(trainingDescription, validationDescription, matches);
-
-        std::sort(matches.begin(), matches.end(), [](const cv::DMatch &a, const cv::DMatch &b)
-                  { return a.distance < b.distance; });
-
-        return matches;
-    }
-    
-    // void computeBruteForceMatching(std::vector<cv::KeyPoint>& trainingKeypoints, std::vector<cv::KeyPoint>& validationKeypoints, cv::Mat& trainingDescriptor, cv::Mat& validationDescriptor, cv::Mat& trainingImage, cv::Mat& validationImage)
-    void computeBruteForceMatching(FeatureExtraction& training, FeatureExtraction& validation, cv::Mat &ouputImage, int maxMatches = 100)
-    {
-        std::vector<cv::KeyPoint> trainingKeypoints = training.getKeypoints();
-        std::vector<cv::KeyPoint> validationKeypoints = validation.getKeypoints();
-        cv::Mat trainingDescription = training.getDescriptor();
-        cv::Mat validationDescription = validation.getDescriptor();
-        cv::Mat trainingImage = training.getImage();
-        cv::Mat validationImage = validation.getImage();
-
-        std::vector<cv::DMatch> matches = ComputerVision::computeMatches(trainingDescription, validationDescription);
-
-        cv::Mat img_matches;
-
-        if (matches.size() > maxMatches)
-        {
-            matches.resize(maxMatches);
-        }
-
-        cv::drawMatches(trainingImage, trainingKeypoints, validationImage, validationKeypoints, matches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-
-        ouputImage = img_matches;
-
-    }
-
     class Video
     {
     private:
@@ -349,7 +305,7 @@ namespace ComputerVision
         cv::Mat frame;
 
     public:
-        Video(const std::string& videoPath) : cap(videoPath)
+        Video(const std::string &videoPath) : cap(videoPath)
         {
             cap.open(videoPath);
             if (!cap.isOpened())
@@ -372,9 +328,7 @@ namespace ComputerVision
 
         ~Video() {}
 
-
-
-        void putFpsOnImage(cv::Mat& image)
+        void putFpsOnImage(cv::Mat &image)
         {
             std::ostringstream oss;
             oss << "FPS: " << fps;
@@ -390,8 +344,66 @@ namespace ComputerVision
         {
             return frames;
         }
-
     };
 
+    class Matcher
+    {
+    private:
+        std::vector<cv::KeyPoint> trainingKeypoints, validationKeypoints;
+        cv::Mat trainingDescription, validationDescription;
+        cv::Mat trainingImage, validationImage;
+        cv::Mat imgMatches;
+        std::vector<cv::DMatch> matches;
+
+    public:
+        Matcher(FeatureExtraction &training, FeatureExtraction &validation)
+        {
+            trainingKeypoints = training.getKeypoints();
+            validationKeypoints = validation.getKeypoints();
+            trainingDescription = training.getDescriptor();
+            validationDescription = validation.getDescriptor();
+            trainingImage = training.getImage();
+            validationImage = validation.getImage();
+        }
+
+        ~Matcher() {}
+
+        std::vector<cv::DMatch> matchFeatures()
+        {
+            return matches = computeMatches(trainingDescription, validationDescription);
+        }
+
+        std::vector<cv::DMatch> computeMatches(const cv::Mat &trainingDescription, const cv::Mat &validationDescription)
+        {
+            cv::BFMatcher bf(cv::NORM_L2);
+
+            bf.match(trainingDescription, validationDescription, matches);
+
+            std::sort(matches.begin(), matches.end(), [](const cv::DMatch &a, const cv::DMatch &b)
+                      { return a.distance < b.distance; });
+
+            return matches;
+        }
+
+        std::vector<cv::DMatch> filterMatches(const double &TH)
+        {
+            std::vector<cv::DMatch> good_matches;
+
+            for (const auto &match : matches)
+            {
+                if (match.distance < TH)
+                {
+                    good_matches.push_back(match);
+                }
+            }
+
+            return good_matches;
+        }
+
+        void drawMatches(const std::vector<cv::DMatch> &matches, cv::Mat &imgMatches)
+        {
+            cv::drawMatches(trainingImage, trainingKeypoints, validationImage, validationKeypoints, matches, imgMatches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+        }
+    };
 
 }
