@@ -24,9 +24,9 @@ cv::Mat loadImage(const std::string &imagePath)
     return inputImage;
 }
 
-std::map<int, cv::Point3f> LoadXYZCoordinates(const std::string& filePath)
+std::vector<cv::Point3f> LoadXYZCoordinates(const std::string& filePath)
 {
-    std::map<int, cv::Point3f> coordinates;
+    std::vector<cv::Point3f> coordinates;
 
     // Datei öffnen
     std::ifstream file(filePath);
@@ -55,8 +55,8 @@ std::map<int, cv::Point3f> LoadXYZCoordinates(const std::string& filePath)
             continue;
         }
 
-        // Punkt erstellen und in die Map einfügen
-        coordinates[index] = cv::Point3f(x, y, z);
+        // Punkt erstellen und in das Vektor einfügen
+        coordinates.push_back(cv::Point3f(x, y, z));
     }
 
     // Datei schließen
@@ -64,6 +64,7 @@ std::map<int, cv::Point3f> LoadXYZCoordinates(const std::string& filePath)
 
     return coordinates;
 }
+
 
 namespace ComputerVision
 {

@@ -12,11 +12,11 @@ LFLAGS = -L/usr/local/lib -L/usr/local/include/opencv4/opencv2
 LIBS = -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_features2d -lopencv_xfeatures2d -lopencv_videoio -lopencv_calib3d
 
 # Quelldateien und Objektdateien
-SRCS = estimate_pose.cpp
+SRCS = test.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 # Hauptausführbare Datei
-MAIN = estimate_pose
+MAIN = test
 
 .PHONY: clean
 
