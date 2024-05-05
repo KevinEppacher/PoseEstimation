@@ -32,6 +32,8 @@ $(MAIN): $(OBJS)
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $<  -o $@
 
+# Regel für Bereinigung und Kompilierung
+clean_all: clean all
 
 clean:
 	$(RM) *.o *~ $(MAIN)

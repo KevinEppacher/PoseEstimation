@@ -27,9 +27,16 @@ int main()
 
     std::vector<cv::Point3f> worldPoints = LoadXYZCoordinates(activeSet_XYZ_Path);
 
-    ComputerVision::CameraCalibrator camera;
+    cv::Size boardSize(8, 6);
 
-    ComputerVision::PoseEstimator poseEstimator(camera.getCameraMatrix(), camera.getDistCoeffs());
+    ComputerVision::CameraCalibrator camera(boardSize);
+
+    std::string imageDirectory = "/home/fhtw_user/catkin_ws/src/HW_3/src/Calibrate/Calibration_Images";
+    camera.loadImagesAndAddChessboardPoints(imageDirectory, false);
+
+    camera.calibrate();
+
+    ComputerVision::PoseEstimator poseEstimator(camera);
 
     for (auto frame : video.getFrames())
     {
@@ -56,7 +63,7 @@ int main()
         }
 
         poseEstimator.estimatePose(filteredMatches, training.getKeypoints(), validation.getKeypoints(), worldPoints);
-
+        
         cv::imshow("Brute Force Matching", outputImage);
 
         if (cv::waitKey(1000 / video.getFPS()) == 27) // Esc-Taste beendet die Schleife

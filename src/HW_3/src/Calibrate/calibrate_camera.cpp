@@ -6,47 +6,19 @@
 #include <iostream>
 #include "ComputerVision.h"
 
-int main()
-{
-    // Defining the dimensions of checkerboard
+int main() {
+    // Defining the dimensions of the checkerboard
     cv::Size boardSize(8, 6);
 
-    // Creating object of CameraCalibrator
-    ComputerVision::CameraCalibrator calibrator(boardSize);
+    // Creating an instance of CalibrationManager
+    ComputerVision::CameraCalibrator camera(boardSize);
 
-    // Extracting path of individual image stored in a given directory
-    std::vector<cv::String> images;
-    // Path of the folder containing checkerboard images
-    std::string path = "/home/fhtw_user/catkin_ws/src/HW_3/src/Calibrate/Calibration_Images/*.jpeg";
-    cv::glob(path, images);
-
-    // Looping over all the images in the directory
-    for (const auto &imagePath : images)
-    {
-        cv::Mat image = cv::imread(imagePath);
-        if (!image.empty())
-        {
-            if (calibrator.addChessboardPoints(image))
-            {
-                std::cout << "Chessboard points detected in: " << imagePath << std::endl;
-            }
-            else
-            {
-                std::cout << "Chessboard points not detected in: " << imagePath << std::endl;
-            }
-        }
-    }
+    // Load images and add chessboard points
+    std::string imageDirectory = "/home/fhtw_user/catkin_ws/src/HW_3/src/Calibrate/Calibration_Images";
+    camera.loadImagesAndAddChessboardPoints(imageDirectory);
 
     // Calibrate the camera
-    cv::Mat testImage = cv::imread(images[0]); // Use any image for imageSize
-    if (!testImage.empty())
-    {
-        calibrator.calibrate(testImage);
-    }
-    else
-    {
-        std::cerr << "Error: Test image not found." << std::endl;
-    }
+    camera.calibrate();
 
     return 0;
 }

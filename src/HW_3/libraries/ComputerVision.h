@@ -258,25 +258,31 @@ namespace ComputerVision
         std::vector<std::vector<cv::Point3f>> objectPoints;
         std::vector<std::vector<cv::Point2f>> imagePoints;
         cv::Size boardSize;
-        cv::Size imageSize;
-        // Kameramatrix (intrinsische Parameter)
-        cv::Mat cameraMatrix = (cv::Mat_<float>(3, 3) << 1206.512307427108, 0, 787.0015996181806,
-                                0, 1205.628608132992, 582.2610369167984,
-                                0, 0, 1);
-
-        // Verzerrungskoeffizienten
-        cv::Mat distCoeffs = (cv::Mat_<float>(5, 1) << 0.2444000559529897,
-                              -1.373671178907526,
-                              -0.001659984339965335,
-                              -0.000872501816739356,
-                              2.55588512543611);
+        cv::Mat cameraMatrix;
+        cv::Mat distCoeffs;
 
     public:
         CameraCalibrator(cv::Size boardSize) : boardSize(boardSize) {}
-        CameraCalibrator(){}
+        CameraCalibrator() {}
 
+        void loadImagesAndAddChessboardPoints(const std::string &imageDirectory, bool showCalibrationImages)
+        {
+            std::vector<cv::String> images;
+            std::string path = imageDirectory + "/*.jpeg";
+            showCalibrationImages = showCalibrationImages;
+            cv::glob(path, images);
 
-        bool addChessboardPoints(const cv::Mat &image)
+            for (const auto &imagePath : images)
+            {
+                cv::Mat image = cv::imread(imagePath);
+                if (!image.empty())
+                {
+                    addChessboardPoints(image, showCalibrationImages);
+                }
+            }
+        }
+
+        bool addChessboardPoints(const cv::Mat &image, bool showCalibrationImages)
         {
             cv::Mat gray;
             cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
@@ -302,10 +308,14 @@ namespace ComputerVision
                 }
                 objectPoints.push_back(objp);
 
-                // Anzeigen des Bildes mit erkannten Ecken
-                cv::drawChessboardCorners(image, boardSize, corners, patternFound);
-                cv::imshow("Detected Chessboard", image);
-                cv::waitKey(0);
+                if(showCalibrationImages == true)
+                {
+                    // Draw detected chessboard corners
+                    cv::drawChessboardCorners(image, boardSize, corners, patternFound);
+                    cv::imshow("Detected Chessboard", image);
+                    cv::waitKey(0);
+                }
+
 
                 return true;
             }
@@ -313,10 +323,10 @@ namespace ComputerVision
             return false;
         }
 
-        void calibrate(const cv::Mat &image)
+        void calibrate()
         {
-            imageSize = image.size();
-            cv::Mat cameraMatrix, distCoeffs, R, T;
+            cv::Size imageSize(imagePoints[0].size(), imagePoints.size());
+            cv::Mat R, T;
 
             cv::calibrateCamera(objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, R, T);
 
@@ -324,23 +334,17 @@ namespace ComputerVision
                       << cameraMatrix << std::endl;
             std::cout << "Distortion Coefficients:\n"
                       << distCoeffs << std::endl;
-            std::cout << "Rotation Vector:\n"
-                      << R << std::endl;
-            std::cout << "Translation Vector:\n"
-                      << T << std::endl;
         }
 
-        cv::Mat getCameraMatrix()
+        cv::Mat getCameraMatrix() const
         {
             return cameraMatrix;
         }
 
-        cv::Mat getDistCoeffs()
+        cv::Mat getDistCoeffs() const
         {
             return distCoeffs;
         }
-
-
     };
 
     class Video
@@ -463,8 +467,7 @@ namespace ComputerVision
     bool estimatePose(const std::vector<cv::DMatch> &matches,
                     const std::vector<cv::KeyPoint> &keypoints1,
                     const std::vector<cv::KeyPoint> &keypoints2,
-                    const std::vector<cv::Point3f> &objectPoints,
-                    cv::Mat *rvec = nullptr, cv::Mat *tvec = nullptr)
+                    const std::vector<cv::Point3f> &objectPoints)
     {
         std::vector<cv::Point2f> imagePoints;
         std::vector<cv::Point3f> selectedObjectPoints;
@@ -483,8 +486,7 @@ namespace ComputerVision
 
         cv::Mat local_rvec, local_tvec;
 
-        bool success = cv::solvePnP(selectedObjectPoints, imagePoints, cameraMatrix, distCoeffs, 
-                                    rvec ? *rvec : local_rvec, tvec ? *tvec : local_tvec);
+        bool success = cv::solvePnP(selectedObjectPoints, imagePoints, cameraMatrix, distCoeffs, rvec, tvec);
 
         if (!success)
         {
@@ -492,13 +494,12 @@ namespace ComputerVision
             return false;
         }
 
-        if (rvec && tvec)
-        {
-            std::cout << "Translation Vector:\n"
-                    << *tvec << std::endl;
-            std::cout << "Rotation Vector:\n"
-                    << *rvec << std::endl;
-        }
+
+        std::cout << "Translation Vector:\n"
+                << tvec << std::endl;
+        std::cout << "Rotation Vector:\n"
+                << rvec << std::endl;
+        
 
         return true;
     }
@@ -507,7 +508,9 @@ namespace ComputerVision
     private:
         cv::Mat cameraMatrix;
         cv::Mat distCoeffs;
+        cv::Mat rvec, tvec;
         ComputerVision::CameraCalibrator camera;
     };
+
 
 }
