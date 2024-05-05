@@ -146,7 +146,8 @@ namespace ComputerVision
 
         void filterKeypointsAndDescriptor(const std::vector<int> &indices)
         {
-            std::vector<cv::KeyPoint> newKeypoints;;
+            std::vector<cv::KeyPoint> newKeypoints;
+            ;
             cv::Mat newDescriptors;
 
             for (int index : indices)
@@ -258,9 +259,22 @@ namespace ComputerVision
         std::vector<std::vector<cv::Point2f>> imagePoints;
         cv::Size boardSize;
         cv::Size imageSize;
+        // Kameramatrix (intrinsische Parameter)
+        cv::Mat cameraMatrix = (cv::Mat_<float>(3, 3) << 1206.512307427108, 0, 787.0015996181806,
+                                0, 1205.628608132992, 582.2610369167984,
+                                0, 0, 1);
+
+        // Verzerrungskoeffizienten
+        cv::Mat distCoeffs = (cv::Mat_<float>(5, 1) << 0.2444000559529897,
+                              -1.373671178907526,
+                              -0.001659984339965335,
+                              -0.000872501816739356,
+                              2.55588512543611);
 
     public:
         CameraCalibrator(cv::Size boardSize) : boardSize(boardSize) {}
+        CameraCalibrator(){}
+
 
         bool addChessboardPoints(const cv::Mat &image)
         {
@@ -315,6 +329,18 @@ namespace ComputerVision
             std::cout << "Translation Vector:\n"
                       << T << std::endl;
         }
+
+        cv::Mat getCameraMatrix()
+        {
+            return cameraMatrix;
+        }
+
+        cv::Mat getDistCoeffs()
+        {
+            return distCoeffs;
+        }
+
+
     };
 
     class Video
@@ -425,6 +451,63 @@ namespace ComputerVision
         {
             cv::drawMatches(trainingImage, trainingKeypoints, validationImage, validationKeypoints, matches, imgMatches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
         }
+    };
+
+    class PoseEstimator
+    {
+    public:
+        PoseEstimator(const cv::Mat &cameraMatrix, const cv::Mat &distCoeffs) : cameraMatrix(cameraMatrix), distCoeffs(distCoeffs) {}
+        PoseEstimator(ComputerVision::CameraCalibrator cameraCalibration): cameraMatrix(cameraCalibration.getCameraMatrix()), distCoeffs(cameraCalibration.getDistCoeffs()){}
+
+
+    bool estimatePose(const std::vector<cv::DMatch> &matches,
+                    const std::vector<cv::KeyPoint> &keypoints1,
+                    const std::vector<cv::KeyPoint> &keypoints2,
+                    const std::vector<cv::Point3f> &objectPoints,
+                    cv::Mat *rvec = nullptr, cv::Mat *tvec = nullptr)
+    {
+        std::vector<cv::Point2f> imagePoints;
+        std::vector<cv::Point3f> selectedObjectPoints;
+
+        for (const auto &match : matches)
+        {
+            imagePoints.push_back(keypoints2[match.trainIdx].pt);
+            selectedObjectPoints.push_back(objectPoints[match.queryIdx]);
+        }
+
+        if (imagePoints.size() < 4 || selectedObjectPoints.size() < 4)
+        {
+            std::cerr << "Not enough points to estimate pose." << std::endl;
+            return false;
+        }
+
+        cv::Mat local_rvec, local_tvec;
+
+        bool success = cv::solvePnP(selectedObjectPoints, imagePoints, cameraMatrix, distCoeffs, 
+                                    rvec ? *rvec : local_rvec, tvec ? *tvec : local_tvec);
+
+        if (!success)
+        {
+            std::cerr << "Pose estimation failed." << std::endl;
+            return false;
+        }
+
+        if (rvec && tvec)
+        {
+            std::cout << "Translation Vector:\n"
+                    << *tvec << std::endl;
+            std::cout << "Rotation Vector:\n"
+                    << *rvec << std::endl;
+        }
+
+        return true;
+    }
+
+
+    private:
+        cv::Mat cameraMatrix;
+        cv::Mat distCoeffs;
+        ComputerVision::CameraCalibrator camera;
     };
 
 }
