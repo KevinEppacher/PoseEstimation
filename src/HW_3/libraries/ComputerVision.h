@@ -24,7 +24,7 @@ cv::Mat loadImage(const std::string &imagePath)
     return inputImage;
 }
 
-std::vector<cv::Point3f> LoadXYZCoordinates(const std::string& filePath)
+std::vector<cv::Point3f> LoadXYZCoordinates(const std::string &filePath)
 {
     std::vector<cv::Point3f> coordinates;
 
@@ -64,7 +64,6 @@ std::vector<cv::Point3f> LoadXYZCoordinates(const std::string& filePath)
 
     return coordinates;
 }
-
 
 namespace ComputerVision
 {
@@ -131,7 +130,7 @@ namespace ComputerVision
 
                 cv::imwrite("sift_result.jpg", outputImage);
 
-                saveToCSV("activeSet.csv", keypoints);
+                saveKeypointsToCSV("activeSet.csv", keypoints);
 
                 cv::destroyAllWindows();
             }
@@ -143,6 +142,27 @@ namespace ComputerVision
 
                 drawIndexesToImage(outputImage, keypoints);
             }
+        }
+
+        void filterKeypointsAndDescriptor(const std::vector<int> &indices)
+        {
+            std::vector<cv::KeyPoint> newKeypoints;;
+            cv::Mat newDescriptors;
+
+            for (int index : indices)
+            {
+                if (index >= 0 && index < keypoints.size())
+                {
+                    newKeypoints.push_back(keypoints[index]);
+                    newDescriptors.push_back(descriptors.row(index));
+                }
+                else
+                {
+                    std::cerr << "Warning: index " << index << " is out of range." << std::endl;
+                }
+            }
+            keypoints = newKeypoints;
+            descriptors = newDescriptors;
         }
 
         cv::Mat getImage()
@@ -188,7 +208,7 @@ namespace ComputerVision
         }
 
         // Methode zum Speichern in CSV-Format
-        void saveToCSV(const std::string &filename, const std::vector<cv::KeyPoint> &keypoints)
+        void saveKeypointsToCSV(const std::string &filename, const std::vector<cv::KeyPoint> &keypoints)
         {
             std::ofstream csvFile(filename);
             if (csvFile.is_open())
