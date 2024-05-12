@@ -5,6 +5,7 @@
 
 int main(int argc, char **argv)
 {
+    
     std::string mode = argv[1];
 
     // Initialize the camera
