@@ -253,109 +253,13 @@ namespace ComputerVision
         }
     };
 
-    class CameraCalibrator
-    {
-    private:
-        std::vector<std::vector<cv::Point3f>> objectPoints;
-        std::vector<std::vector<cv::Point2f>> imagePoints;
-        cv::Size boardSize;
-        cv::Mat cameraMatrix;
-        cv::Mat distCoeffs;
-
-    public:
-        CameraCalibrator(cv::Size boardSize) : boardSize(boardSize) {}
-        CameraCalibrator() {}
-
-        void loadImagesAndAddChessboardPoints(const std::string &imageDirectory, bool showCalibrationImages)
-        {
-            std::vector<cv::String> images;
-            std::string path = imageDirectory + "/*.jpeg";
-            showCalibrationImages = showCalibrationImages;
-            cv::glob(path, images);
-
-            for (const auto &imagePath : images)
-            {
-                cv::Mat image = cv::imread(imagePath);
-
-                if (!image.empty())
-                {
-                    addChessboardPoints(image, showCalibrationImages);
-                }
-            }
-        }
-
-        bool addChessboardPoints(const cv::Mat &image, bool showCalibrationImages)
-        {
-            cv::Mat gray;
-            cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
-
-            std::vector<cv::Point2f> corners;
-            bool patternFound = cv::findChessboardCorners(gray, boardSize, corners,
-                                                          cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_FAST_CHECK | cv::CALIB_CB_NORMALIZE_IMAGE);
-
-            if (patternFound)
-            {
-                cv::cornerSubPix(gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
-                                 cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.001));
-
-                imagePoints.push_back(corners);
-
-                std::vector<cv::Point3f> objp;
-                for (int i = 0; i < boardSize.height; ++i)
-                {
-                    for (int j = 0; j < boardSize.width; ++j)
-                    {
-                        objp.push_back(cv::Point3f(j, i, 0));
-                    }
-                }
-                objectPoints.push_back(objp);
-
-                if(showCalibrationImages == true)
-                {
-                    // Draw detected chessboard corners
-                    cv::drawChessboardCorners(image, boardSize, corners, patternFound);
-                    cv::imshow("Detected Chessboard", image);
-                    cv::waitKey(0);
-                }
-
-
-                return true;
-            }
-
-            return false;
-        }
-
-        void calibrate()
-        {
-            cv::Size imageSize(imagePoints[0].size(), imagePoints.size());
-            cv::Mat R, T;
-
-            cv::calibrateCamera(objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, R, T);
-
-            std::cout << "Camera Matrix:\n"
-                      << cameraMatrix << std::endl;
-            std::cout << "Distortion Coefficients:\n"
-                      << distCoeffs << std::endl;
-        }
-
-        cv::Mat getCameraMatrix() const
-        {
-            return cameraMatrix;
-        }
-
-        cv::Mat getDistCoeffs() const
-        {
-            return distCoeffs;
-        }
-    };
-
     class Video
     {
     private:
         cv::VideoCapture cap;
-        double fps;
         std::vector<cv::Mat> frames;
         cv::Mat frame;
+        double fps;
 
     public:
         Video(const std::string &videoPath) : cap(videoPath)
@@ -396,6 +300,131 @@ namespace ComputerVision
         std::vector<cv::Mat> getFrames()
         {
             return frames;
+        }
+    };
+
+    class CameraCalibrator
+    {
+    private:
+        std::vector<std::vector<cv::Point3f>> objectPoints;
+        std::vector<std::vector<cv::Point2f>> imagePoints;
+        cv::Size boardSize;
+        cv::Mat cameraMatrix;
+        cv::Mat distCoeffs;
+        std::string videoPath;
+
+    public:
+        CameraCalibrator(cv::Size boardSize) : boardSize(boardSize) {}
+        CameraCalibrator(std::string videoPath) : videoPath(videoPath) {}
+        CameraCalibrator() {}
+
+        void loadVideoPath(const std::string &videoPath)
+        {
+            this->videoPath = videoPath;
+        }
+
+        // ich möchte eine methode, welche mir den pfad des videos einliest und die bilder extrahiert.
+        void loadVideoAndAddChessboardPoints(const std::string &videoPath, bool showCalibrationImages)
+        {
+            Video video(videoPath);
+            std::vector<cv::Mat> frames = video.getFrames();
+
+            for (auto &frame : frames)
+            {
+                if (!frame.empty())
+                {
+                    addChessboardPoints(frame, showCalibrationImages);
+                }
+            }
+        }
+
+        void loadImagesAndAddChessboardPoints(const std::string &imageDirectory, bool showCalibrationImages)
+        {
+            std::vector<cv::String> images;
+            std::string path = imageDirectory + "/*.jpeg";
+            showCalibrationImages = showCalibrationImages;
+            cv::glob(path, images);
+
+            for (const auto &imagePath : images)
+            {
+                cv::Mat image = cv::imread(imagePath);
+
+                if (!image.empty())
+                {
+                    addChessboardPoints(image, showCalibrationImages);
+                }
+            }
+
+            // std::cout << "Number of images: " << imagePoints.size() << std::endl;
+            // std::cout << "cameraMatrix: \n"
+            //           << cameraMatrix << std::endl;
+            // std::cout << "distCoeffs: \n"
+            //           << distCoeffs << std::endl;
+        }
+
+        bool addChessboardPoints(const cv::Mat &image, bool showCalibrationImages)
+        {
+            cv::Mat gray;
+            cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+
+            std::vector<cv::Point2f> corners;
+            bool patternFound = cv::findChessboardCorners(gray, boardSize, corners,
+                                                          cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_FAST_CHECK | cv::CALIB_CB_NORMALIZE_IMAGE);
+
+            if (patternFound)
+            {
+                cv::cornerSubPix(gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
+                                 cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.001));
+
+                imagePoints.push_back(corners);
+
+                std::vector<cv::Point3f> objp;
+                for (int i = 0; i < boardSize.height; ++i)
+                {
+                    for (int j = 0; j < boardSize.width; ++j)
+                    {
+                        objp.push_back(cv::Point3f(j, i, 0));
+                    }
+                }
+                objectPoints.push_back(objp);
+
+                std::cout << "Chessboard detected in image: " << imagePoints.size() << std::endl;
+
+                if (showCalibrationImages == true)
+                {
+                    // Draw detected chessboard corners
+                    cv::drawChessboardCorners(image, boardSize, corners, patternFound);
+                    cv::imshow("Detected Chessboard", image);
+                    cv::waitKey(0);
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        void calibrate()
+        {
+            cv::Size imageSize(imagePoints[0].size(), imagePoints.size());
+            cv::Mat R, T;
+
+            cv::calibrateCamera(objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, R, T);
+
+            std::cout << "Camera Matrix:\n"
+                      << cameraMatrix << std::endl;
+            std::cout << "Distortion Coefficients:\n"
+                      << distCoeffs << std::endl;
+        }
+
+        cv::Mat getCameraMatrix() const
+        {
+            return cameraMatrix;
+        }
+
+        cv::Mat getDistCoeffs() const
+        {
+            return distCoeffs;
         }
     };
 
@@ -463,82 +492,76 @@ namespace ComputerVision
     {
     public:
         PoseEstimator(const cv::Mat &cameraMatrix, const cv::Mat &distCoeffs) : cameraMatrix(cameraMatrix), distCoeffs(distCoeffs) {}
-        PoseEstimator(ComputerVision::CameraCalibrator cameraCalibration): cameraMatrix(cameraCalibration.getCameraMatrix()), distCoeffs(cameraCalibration.getDistCoeffs()){}
+        PoseEstimator(ComputerVision::CameraCalibrator cameraCalibration) : cameraMatrix(cameraCalibration.getCameraMatrix()), distCoeffs(cameraCalibration.getDistCoeffs()) {}
 
-
-    bool estimatePose(const std::vector<cv::DMatch> &matches,
-                    const std::vector<cv::KeyPoint> &keypoints1,
-                    const std::vector<cv::KeyPoint> &keypoints2,
-                    const std::vector<cv::Point3f> &objectPoints)
-    {
-        std::vector<cv::Point2f> imagePoints;
-        std::vector<cv::Point3f> selectedObjectPoints;
-
-        for (const auto &match : matches)
+        bool estimatePose(const std::vector<cv::DMatch> &matches,
+                          const std::vector<cv::KeyPoint> &keypoints1,
+                          const std::vector<cv::KeyPoint> &keypoints2,
+                          const std::vector<cv::Point3f> &objectPoints)
         {
-            imagePoints.push_back(keypoints2[match.trainIdx].pt);
-            selectedObjectPoints.push_back(objectPoints[match.queryIdx]);
+            std::vector<cv::Point2f> imagePoints;
+            std::vector<cv::Point3f> selectedObjectPoints;
+
+            for (const auto &match : matches)
+            {
+                imagePoints.push_back(keypoints2[match.trainIdx].pt);
+                selectedObjectPoints.push_back(objectPoints[match.queryIdx]);
+            }
+
+            if (imagePoints.size() < 4 || selectedObjectPoints.size() < 4)
+            {
+                std::cerr << "Not enough points to estimate pose." << std::endl;
+                return false;
+            }
+
+            cv::Mat local_rvec, local_tvec;
+
+            bool success = cv::solvePnP(selectedObjectPoints, imagePoints, cameraMatrix, distCoeffs, rvec, tvec);
+
+            if (!success)
+            {
+                std::cerr << "Pose estimation failed." << std::endl;
+                return false;
+            }
+
+            std::cout << "Translation Vector:\n"
+                      << tvec << std::endl;
+            std::cout << "Rotation Vector:\n"
+                      << rvec << std::endl;
+
+            return true;
         }
 
-        if (imagePoints.size() < 4 || selectedObjectPoints.size() < 4)
+        void drawCoordinateSystem(cv::Mat &image)
         {
-            std::cerr << "Not enough points to estimate pose." << std::endl;
-            return false;
+            // Wenn die Rotation und Translation nicht berechnet werden konnten, wird die Methode abgebrochen
+            if (rvec.empty() || tvec.empty())
+            {
+                return;
+            }
+
+            tvec.at<double>(0) *= 1000; // x-Komponente
+            tvec.at<double>(1) *= 1000; // x-Komponente
+            tvec.at<double>(2) *= 1000; // x-Komponente
+
+            std::cout << "Translation Vector Coordinate:\n"
+                      << tvec << std::endl;
+
+            // Zeichnen Sie das Koordinatensystem
+            cv::drawFrameAxes(image, cameraMatrix, distCoeffs, rvec, tvec, 100); // 100 ist die Länge der Achsen
+
+            // cv::waitKey(0);
         }
 
-        cv::Mat local_rvec, local_tvec;
-
-        bool success = cv::solvePnP(selectedObjectPoints, imagePoints, cameraMatrix, distCoeffs, rvec, tvec);
-
-        if (!success)
+        cv::Mat getRvec()
         {
-            std::cerr << "Pose estimation failed." << std::endl;
-            return false;
+            return rvec;
         }
 
-        std::cout << "Translation Vector:\n"
-                << tvec << std::endl;
-        std::cout << "Rotation Vector:\n"
-                << rvec << std::endl;
-
-        
-
-        return true;
-    }
-
-    void drawCoordinateSystem(cv::Mat &image)
-    {
-        // Wenn die Rotation und Translation nicht berechnet werden konnten, wird die Methode abgebrochen
-        if (rvec.empty() || tvec.empty())
+        cv::Mat getTvec()
         {
-            return;
+            return tvec;
         }
-
-        tvec.at<double>(0) *= 1000; // x-Komponente
-        tvec.at<double>(1) *= 1000; // x-Komponente
-        tvec.at<double>(2) *= 1000; // x-Komponente
-
-        std::cout << "Translation Vector Coordinate:\n"
-                << tvec << std::endl;
-
-
-        // Zeichnen Sie das Koordinatensystem
-        cv::drawFrameAxes(image, cameraMatrix, distCoeffs, rvec, tvec, 100); // 100 ist die Länge der Achsen
-
-        // cv::waitKey(0);
-
-    }
-
-    cv::Mat getRvec()
-    {
-        return rvec;
-    }
-
-    cv::Mat getTvec()
-    {
-        return tvec;
-    }
-
 
     private:
         cv::Mat cameraMatrix;
@@ -546,6 +569,5 @@ namespace ComputerVision
         cv::Mat rvec, tvec;
         ComputerVision::CameraCalibrator camera;
     };
-
 
 }
