@@ -88,7 +88,7 @@ namespace ComputerVision
 
         FeatureExtraction(){};
 
-        FeatureExtraction(const cv::Mat &inputImage) : inputImage(inputImage){};
+        FeatureExtraction(cv::Mat &inputImage) : inputImage(inputImage){};
 
         void setContrastThreshold(double value)
         {
@@ -132,7 +132,7 @@ namespace ComputerVision
 
                 saveKeypointsToCSV("activeSet.csv", keypoints);
 
-                cv::destroyAllWindows();
+                // cv::destroyAllWindows();
             }
             else
             {
@@ -147,7 +147,7 @@ namespace ComputerVision
         void filterKeypointsAndDescriptor(const std::vector<int> &indices)
         {
             std::vector<cv::KeyPoint> newKeypoints;
-            ;
+
             cv::Mat newDescriptors;
 
             for (int index : indices)
@@ -162,6 +162,7 @@ namespace ComputerVision
                     std::cerr << "Warning: index " << index << " is out of range." << std::endl;
                 }
             }
+
             keypoints = newKeypoints;
             descriptors = newDescriptors;
         }

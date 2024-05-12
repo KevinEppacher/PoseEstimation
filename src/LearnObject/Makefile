@@ -9,8 +9,7 @@ INCLUDES = -I/usr/local/include/opencv4 \
 
 # Linker Flags und Bibliotheken
 LFLAGS = -L/usr/local/lib
-LIBS = -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_features2d -lopencv_xfeatures2d
-
+LIBS = -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_features2d -lopencv_xfeatures2d -lopencv_videoio
 # Quelldateien und Objektdateien
 SRCS = feature_extraction.cpp
 OBJS = $(SRCS:.cpp=.o)

@@ -3,9 +3,19 @@
 #include <opencv2/opencv.hpp>
 #include "ComputerVision.h"
 
-
-int main()
+int main(int argc, char **argv)
 {
+    std::string mode = argv[1];
+
+    // Initialize the camera
+    cv::VideoCapture cap(0); // open the default camera, change the index if you have multiple cameras
+
+    if (!cap.isOpened()) // check if we succeeded
+    {
+        std::cout << "Could not open camera" << std::endl;
+        return -1;
+    }
+
     std::string trainingImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png";
     ComputerVision::FeatureExtraction training(trainingImagePath);
 
@@ -38,46 +48,93 @@ int main()
 
     ComputerVision::PoseEstimator poseEstimator(camera);
 
-    for (auto frame : video.getFrames())
+    cv::Mat undistortedFrame;
+
+    if (mode == "Live")
     {
-        cv::Mat undistortedFrame;
-
-        cv::undistort(frame, undistortedFrame, camera.getCameraMatrix(), camera.getDistCoeffs());
-        
-        ComputerVision::FeatureExtraction validation(undistortedFrame);
-        validation.computeKeypointsAndDescriptors(false);
-
-        cv::Mat outputImage;
-        ComputerVision::Matcher matcher(training, validation);
-
-        std::vector<cv::DMatch> matches = matcher.matchFeatures();
-
-        std::vector<cv::DMatch> filteredMatches = matcher.filterMatches(150);
-
-        matcher.drawMatches(filteredMatches, outputImage);
-
-        video.putFpsOnImage(outputImage);
-
-        std::vector<cv::KeyPoint> keypoints = validation.getKeypoints();
-        std::vector<cv::Point2f> imagePoints;
-
-        for (const auto &kp : keypoints)
+        while (true)
         {
-            imagePoints.push_back(kp.pt);
-        }
 
-        cv::Mat rvec, tvec;
-        if (poseEstimator.estimatePose(filteredMatches, training.getKeypoints(), validation.getKeypoints(), worldPoints))
+            cv::Mat cameraFrame;
+            cap >> cameraFrame;
+
+            cv::undistort(cameraFrame, undistortedFrame, camera.getCameraMatrix(), camera.getDistCoeffs());
+
+            ComputerVision::FeatureExtraction validation(undistortedFrame);
+            validation.computeKeypointsAndDescriptors(false);
+
+            cv::Mat outputImage;
+            ComputerVision::Matcher matcher(training, validation);
+
+            std::vector<cv::DMatch> matches = matcher.matchFeatures();
+
+            std::vector<cv::DMatch> filteredMatches = matcher.filterMatches(250);
+
+            matcher.drawMatches(filteredMatches, outputImage);
+
+            video.putFpsOnImage(outputImage);
+
+            std::vector<cv::KeyPoint> keypoints = validation.getKeypoints();
+            std::vector<cv::Point2f> imagePoints;
+
+            for (const auto &kp : keypoints)
+            {
+                imagePoints.push_back(kp.pt);
+            }
+
+            cv::Mat rvec, tvec;
+            if (poseEstimator.estimatePose(filteredMatches, training.getKeypoints(), validation.getKeypoints(), worldPoints))
+            {
+                poseEstimator.drawCoordinateSystem(cameraFrame);
+            }
+
+            cv::imshow("Brute Force Matching", outputImage);
+            cv::imshow("Schauma moi", cameraFrame);
+
+            if (cv::waitKey(1000 / video.getFPS()) == 27) // Esc-Taste beendet die Schleife
+                break;
+        }
+    }
+    else
+    {
+        for (auto frame : video.getFrames())
         {
-            poseEstimator.drawCoordinateSystem(frame);
+            cv::undistort(frame, undistortedFrame, camera.getCameraMatrix(), camera.getDistCoeffs());
+
+            ComputerVision::FeatureExtraction validation(frame);
+            validation.computeKeypointsAndDescriptors(false);
+
+            cv::Mat outputImage;
+            ComputerVision::Matcher matcher(training, validation);
+
+            std::vector<cv::DMatch> matches = matcher.matchFeatures();
+
+            std::vector<cv::DMatch> filteredMatches = matcher.filterMatches(150);
+
+            matcher.drawMatches(filteredMatches, outputImage);
+
+            video.putFpsOnImage(outputImage);
+
+            std::vector<cv::KeyPoint> keypoints = validation.getKeypoints();
+            std::vector<cv::Point2f> imagePoints;
+
+            for (const auto &kp : keypoints)
+            {
+                imagePoints.push_back(kp.pt);
+            }
+
+            cv::Mat rvec, tvec;
+            if (poseEstimator.estimatePose(filteredMatches, training.getKeypoints(), validation.getKeypoints(), worldPoints))
+            {
+                poseEstimator.drawCoordinateSystem(frame);
+            }
+
+            cv::imshow("Brute Force Matching", outputImage);
+            cv::imshow("Schauma moi", frame);
+
+            if (cv::waitKey(1000 / video.getFPS()) == 27) // Esc-Taste beendet die Schleife
+                break;
         }
-
-        cv::imshow("Brute Force Matching", outputImage);
-        cv::imshow("Schauma moi", frame);
-
-
-        if (cv::waitKey(1000 / video.getFPS()) == 27) // Esc-Taste beendet die Schleife
-            break;
     }
 
     cv::destroyAllWindows();
