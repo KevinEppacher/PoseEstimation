@@ -15,7 +15,7 @@ int main() {
 
     // Load images and add chessboard points
     std::string imageDirectory = "/home/fhtw_user/catkin_ws/src/HW_3/src/Calibrate/Calibration_Images";
-    camera.loadImagesAndAddChessboardPoints(imageDirectory);
+    camera.loadImagesAndAddChessboardPoints(imageDirectory, true);
 
     // Calibrate the camera
     camera.calibrate();

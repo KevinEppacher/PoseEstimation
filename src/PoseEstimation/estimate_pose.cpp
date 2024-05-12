@@ -40,7 +40,11 @@ int main()
 
     for (auto frame : video.getFrames())
     {
-        ComputerVision::FeatureExtraction validation(frame);
+        cv::Mat undistortedFrame;
+
+        cv::undistort(frame, undistortedFrame, camera.getCameraMatrix(), camera.getDistCoeffs());
+        
+        ComputerVision::FeatureExtraction validation(undistortedFrame);
         validation.computeKeypointsAndDescriptors(false);
 
         cv::Mat outputImage;
@@ -62,10 +66,15 @@ int main()
             imagePoints.push_back(kp.pt);
         }
 
-        poseEstimator.estimatePose(filteredMatches, training.getKeypoints(), validation.getKeypoints(), worldPoints);
+        cv::Mat rvec, tvec;
+        if (poseEstimator.estimatePose(filteredMatches, training.getKeypoints(), validation.getKeypoints(), worldPoints))
+        {
+            poseEstimator.drawCoordinateSystem(frame);
+        }
 
-        
         cv::imshow("Brute Force Matching", outputImage);
+        cv::imshow("Schauma moi", frame);
+
 
         if (cv::waitKey(1000 / video.getFPS()) == 27) // Esc-Taste beendet die Schleife
             break;

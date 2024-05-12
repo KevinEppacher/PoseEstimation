@@ -1,44 +1,46 @@
-#include <iostream>
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/features2d.hpp>
-#include <opencv2/xfeatures2d.hpp>
 #include <opencv2/opencv.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <fstream>
 
-int main() {
-    // 3D-Punkte im Weltkoordinatensystem
-    std::vector<cv::Point3f> objectPoints = {cv::Point3f(0, 0, 0),
-                                              cv::Point3f(1, 0, 0),
-                                              cv::Point3f(0, 1, 0),
-                                              cv::Point3f(1, 1, 0)};
+cv::Mat loadImage(const std::string &imagePath)
+{
+    cv::Mat inputImage = cv::imread(imagePath);
 
-    // Ecken des Musters im Bild
-    std::vector<cv::Point2f> imagePoints = {cv::Point2f(10, 10),
-                                             cv::Point2f(20, 10),
-                                             cv::Point2f(10, 20),
-                                             cv::Point2f(20, 20),
-                                             cv::Point2f(20, 20)};
+    if (inputImage.empty())
+    {
+        std::cerr << "Error: Image not found or unable to read." << std::endl;
+    }
+    else
+    {
+        std::cout << "Image loaded successfully." << std::endl;
+    }
 
-    // Kameramatrix (intrinsische Parameter)
-    cv::Mat cameraMatrix = (cv::Mat_<float>(3, 3) << 100, 0, 50,
-                                                     0, 100, 50,
-                                                     0, 0, 1);
+    return inputImage;
+}
 
-    // Verzerrungskoeffizienten
-    cv::Mat distCoeffs = cv::Mat::zeros(4, 1, CV_32F);
+int main()
+{
+    // Laden des Bildes
+    cv::Mat image = loadImage("/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png");
 
-    // solvePnP aufrufen, um die Pose zu schätzen
-    cv::Mat rvec, tvec;
-    cv::solvePnP(objectPoints, imagePoints, cameraMatrix, distCoeffs, rvec, tvec);
+    // Definition des Koordinatensystems
+    cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64F); // Rotationsvektor: Nullvektor (keine Rotation)
+    cv::Mat tvec = cv::Mat::zeros(3, 1, CV_64F); // Translationsvektor: Nullvektor (keine Verschiebung)
 
-    // Drucken der Ergebnisse
-    std::cout << "Rotation vector (rvec):" << std::endl;
-    std::cout << rvec << std::endl;
-    std::cout << "Translation vector (tvec):" << std::endl;
-    std::cout << tvec << std::endl;
+    // Anpassen des Translationsvektors, um die x- und y-Translation einzustellen
+    tvec.at<double>(0) = 0; // x-Komponente
+    tvec.at<double>(1) = 0; // y-Komponente
+    tvec.at<double>(2) = 0; // z-Komponente
+
+    rvec.at<double>(0) = 0; // x-Rotation
+    rvec.at<double>(1) = 0; // y-Rotation
+    rvec.at<double>(2) = 0; // z-Rotation
+
+    // Zeichnen Sie das Koordinatensystem
+    cv::drawFrameAxes(image, cv::Mat::eye(3, 3, CV_64F), cv::Mat(), rvec, tvec, 100); // 100 ist die Länge der Achsen
+
+    // Anzeigen des Bildes
+    cv::imshow("Coordinate System", image);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
 
     return 0;
 }

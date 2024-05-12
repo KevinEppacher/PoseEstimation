@@ -275,6 +275,7 @@ namespace ComputerVision
             for (const auto &imagePath : images)
             {
                 cv::Mat image = cv::imread(imagePath);
+
                 if (!image.empty())
                 {
                     addChessboardPoints(image, showCalibrationImages);
@@ -494,14 +495,47 @@ namespace ComputerVision
             return false;
         }
 
-
         std::cout << "Translation Vector:\n"
                 << tvec << std::endl;
         std::cout << "Rotation Vector:\n"
                 << rvec << std::endl;
+
         
 
         return true;
+    }
+
+    void drawCoordinateSystem(cv::Mat &image)
+    {
+        // Wenn die Rotation und Translation nicht berechnet werden konnten, wird die Methode abgebrochen
+        if (rvec.empty() || tvec.empty())
+        {
+            return;
+        }
+
+        tvec.at<double>(0) *= 1000; // x-Komponente
+        tvec.at<double>(1) *= 1000; // x-Komponente
+        tvec.at<double>(2) *= 1000; // x-Komponente
+
+        std::cout << "Translation Vector Coordinate:\n"
+                << tvec << std::endl;
+
+
+        // Zeichnen Sie das Koordinatensystem
+        cv::drawFrameAxes(image, cameraMatrix, distCoeffs, rvec, tvec, 100); // 100 ist die Länge der Achsen
+
+        // cv::waitKey(0);
+
+    }
+
+    cv::Mat getRvec()
+    {
+        return rvec;
+    }
+
+    cv::Mat getTvec()
+    {
+        return tvec;
     }
 
 
