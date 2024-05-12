@@ -8,6 +8,12 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <fstream>
 
+/**
+ * @brief The `cv::Mat` class represents a multi-dimensional dense numerical array used in OpenCV for image processing.
+ *
+ * It is used to store and manipulate images and other multi-dimensional data. The `cv::Mat` class provides various
+ * methods and operators for accessing and manipulating the pixel values of an image.
+ */
 cv::Mat loadImage(const std::string &imagePath)
 {
     cv::Mat inputImage = cv::imread(imagePath);
@@ -24,6 +30,13 @@ cv::Mat loadImage(const std::string &imagePath)
     return inputImage;
 }
 
+/**
+ * @brief A vector of 3D points in the OpenCV library.
+ *
+ * This vector is used to store a collection of 3D points, where each point is represented by
+ * a cv::Point3f object. It provides methods for adding, accessing, and manipulating the points
+ * in the vector.
+ */
 std::vector<cv::Point3f> LoadXYZCoordinates(const std::string &filePath)
 {
     std::vector<cv::Point3f> coordinates;
@@ -68,6 +81,10 @@ std::vector<cv::Point3f> LoadXYZCoordinates(const std::string &filePath)
 namespace ComputerVision
 {
 
+    /**
+     * @class FeatureExtraction
+     * @brief A class that performs feature extraction on an input image using the SIFT algorithm.
+     */
     class FeatureExtraction
     {
     private:
@@ -79,6 +96,11 @@ namespace ComputerVision
         int contrastThresholdInt;
 
     public:
+        /**
+         * @brief Constructs a FeatureExtraction object with the given image path.
+         *
+         * @param imagePath The path to the input image.
+         */
         FeatureExtraction(const std::string &imagePath)
         {
             inputImage = loadImage(imagePath);
@@ -88,25 +110,51 @@ namespace ComputerVision
 
         FeatureExtraction(){};
 
+        /**
+         * @brief Extracts features from an image.
+         *
+         * This function takes an input image and extracts features using a specific algorithm.
+         * The extracted features are returned as a vector of feature descriptors.
+         *
+         * @param image The input image from which features are to be extracted.
+         * @param algorithm The algorithm used for feature extraction.
+         * @return A vector of feature descriptors.
+         */
         FeatureExtraction(cv::Mat &inputImage) : inputImage(inputImage){};
 
+        /**
+         * @brief Sets the contrast threshold for feature extraction.
+         *
+         * This function sets the contrast threshold for feature extraction.
+         * The contrast threshold determines the minimum contrast required for a pixel to be considered a feature.
+         *
+         * @param value The contrast threshold value.
+         */
         void setContrastThreshold(double value)
         {
             contrastThreshold = value;
-            contrastThresholdInt = static_cast<int>(value * 100); // Umrechnen in einen Integer-Wert im Bereich [0, 100]
+            contrastThresholdInt = static_cast<int>(value * 100); // Convert to an integer value in the range [0, 100]
         }
 
+        /**
+         * @brief Computes keypoints and descriptors.
+         *
+         * This function computes keypoints and descriptors using the SIFT algorithm.
+         * If withTrackbar is true, it displays a trackbar to adjust the contrast threshold interactively.
+         * If withTrackbar is false, it computes the keypoints and descriptors without displaying the trackbar.
+         *
+         * @param withTrackbar Flag indicating whether to display the trackbar or not.
+         */
         void computeKeypointsAndDescriptors(bool withTrackbar)
         {
-
             bool isRunning = true;
 
             if (withTrackbar)
             {
-                // Fenster erstellen
+                // Create window
                 cv::namedWindow("Trackbar");
 
-                // Trackbar erstellen
+                // Create trackbar
                 cv::createTrackbar("Contrast Threshold", "Trackbar", &contrastThresholdInt, 100, onTrackbar, this);
 
                 while (isRunning)
@@ -124,7 +172,7 @@ namespace ComputerVision
                     if (key != -1)
                     {
                         std::cout << "Key pressed: " << key << std::endl;
-                        isRunning = false; // Beende die Schleife
+                        isRunning = false; // Exit the loop
                     }
                 }
 
@@ -144,10 +192,17 @@ namespace ComputerVision
             }
         }
 
+        /**
+         * @brief Filters keypoints and descriptors based on given indices.
+         *
+         * This function filters the keypoints and descriptors based on the given indices.
+         * Only the keypoints and descriptors with indices in the provided vector will be kept.
+         *
+         * @param indices The indices of the keypoints and descriptors to keep.
+         */
         void filterKeypointsAndDescriptor(const std::vector<int> &indices)
         {
             std::vector<cv::KeyPoint> newKeypoints;
-
             cv::Mat newDescriptors;
 
             for (int index : indices)
@@ -167,11 +222,65 @@ namespace ComputerVision
             descriptors = newDescriptors;
         }
 
+        /**
+         * @brief Filters keypoints and descriptors based on indices provided in a CSV file.
+         *
+         * This function filters the keypoints and descriptors based on the indices provided in a CSV file.
+         * Only the keypoints and descriptors with indices in the CSV file will be kept.
+         *
+         * @param csvPath The path to the CSV file containing the indices.
+         * @return A vector of filtered indices.
+         * @throws std::runtime_error if the CSV file cannot be opened.
+         */
+        std::vector<int> filterKeypointsAndDescriptor(const std::string &csvPath)
+        {
+            std::ifstream file(csvPath);
+
+            if (!file.is_open())
+                throw std::runtime_error("Could not open CSV file");
+
+            std::vector<int> indices;
+            std::string line, value;
+
+            std::getline(file, line);
+
+            while (std::getline(file, line))
+            {
+                std::stringstream ss(line);
+
+                std::getline(ss, value, ',');
+
+                // Überprüfen Sie, ob der String `value` eine Ganzzahl darstellt
+                if (!value.empty() && std::all_of(value.begin(), value.end(), ::isdigit))
+                {
+                    indices.push_back(std::stoi(value));
+                }
+                else
+                {
+                    std::cerr << "Warning: Invalid value in CSV file: " << value << std::endl;
+                }
+            }
+
+            file.close();
+
+            return indices;
+        }
+
+        /**
+         * Retrieves the input image.
+         *
+         * @return The input image as a cv::Mat object.
+         */
         cv::Mat getImage()
         {
             return inputImage;
         }
 
+        /**
+         * @brief Get the descriptor.
+         *
+         * @return cv::Mat The descriptor matrix.
+         */
         cv::Mat getDescriptor()
         {
             return this->descriptors;
@@ -185,7 +294,16 @@ namespace ComputerVision
         }
 
     private:
-        // Methode zum Erstellen der Merkmale und Deskriptoren
+        /**
+         * @brief Detects keypoints and computes descriptors.
+         *
+         * This function detects keypoints and computes descriptors using the SIFT algorithm.
+         *
+         * @param inputImage The input image from which keypoints and descriptors are to be computed.
+         * @param contrastThreshold The contrast threshold for determining corner contrast strength.
+         * @param keypoints The output vector of keypoints.
+         * @param descriptors The output matrix of descriptors.
+         */
         void detectAndComputeKeypointsAndDescriptors(const cv::Mat &inputImage, double &contrastThreshold, std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors)
         {
             // Creating a SIFT feature detector with custom parameters
@@ -200,7 +318,14 @@ namespace ComputerVision
             detector->detectAndCompute(inputImage, cv::noArray(), keypoints, descriptors);
         }
 
-        // Methode zum Speichern in YAML-Format
+        /**
+         * @brief Saves keypoints and descriptors to a YAML file.
+         *
+         * This function saves the keypoints and descriptors to a YAML file.
+         *
+         * @param filename The name of the YAML file to save.
+         * @param keypoints The vector of keypoints to save.
+         */
         void saveToYAML(const std::string &filename, const std::vector<cv::KeyPoint> &keypoints)
         {
             cv::FileStorage file(filename, cv::FileStorage::WRITE);
@@ -209,7 +334,14 @@ namespace ComputerVision
             file.release();
         }
 
-        // Methode zum Speichern in CSV-Format
+        /**
+         * @brief Saves keypoints to a CSV file.
+         *
+         * This function saves the keypoints to a CSV file.
+         *
+         * @param filename The name of the CSV file to save.
+         * @param keypoints The vector of keypoints to save.
+         */
         void saveKeypointsToCSV(const std::string &filename, const std::vector<cv::KeyPoint> &keypoints)
         {
             std::ofstream csvFile(filename);
@@ -225,30 +357,34 @@ namespace ComputerVision
             }
         }
 
-        // Methode zum Anzeigen der Indizes im Bild
+        /**
+         * @brief Draws indexes on the image for each keypoint.
+         *
+         * This function draws indexes on the image for each keypoint.
+         *
+         * @param image The image on which to draw the indexes.
+         * @param keypoints The vector of keypoints.
+         */
         void drawIndexesToImage(cv::Mat &image, std::vector<cv::KeyPoint> &keypoints)
         {
             for (size_t i = 0; i < keypoints.size(); ++i)
             {
-                const auto &kp = keypoints[i];
-                std::string index = std::to_string(i);
-                cv::putText(image,                    // Image
-                            index,                    // Text to display
-                            kp.pt,                    // Bottom-left corner of the text
-                            cv::FONT_HERSHEY_SIMPLEX, // Font type
-                            0.4,                      // Font scale
-                            cv::Scalar(0, 255, 0),    // Font color
-                            1);                       // Thickness
+                cv::putText(image, std::to_string(i), keypoints[i].pt, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1);
             }
         }
 
-        // Statische Callback-Methode für den Trackbar
+        /**
+         * @brief Static callback method for the trackbar.
+         *
+         * This function is a static callback method for the trackbar.
+         *
+         * @param value The value of the trackbar.
+         * @param userdata The user data passed to the callback.
+         */
         static void onTrackbar(int value, void *userdata)
         {
             FeatureExtraction *fe = static_cast<FeatureExtraction *>(userdata);
-
             double contrastThreshold = static_cast<double>(value) / 100.0;
-
             fe->setContrastThreshold(contrastThreshold);
         }
     };
@@ -262,6 +398,16 @@ namespace ComputerVision
         double fps;
 
     public:
+        /**
+         * @brief Constructs a Video object from a video file.
+         *
+         * This constructor opens the video file specified by the given path and initializes the Video object.
+         * It reads all the frames from the video and stores them in the frames vector.
+         * It also retrieves the frames per second (FPS) of the video.
+         *
+         * @param videoPath The path to the video file.
+         * @throws std::runtime_error if the video file cannot be opened or if no frames are found in the video.
+         */
         Video(const std::string &videoPath) : cap(videoPath)
         {
             cap.open(videoPath);
@@ -285,6 +431,13 @@ namespace ComputerVision
 
         ~Video() {}
 
+        /**
+         * @brief Puts the frames per second (FPS) on the image.
+         *
+         * This function puts the frames per second (FPS) on the image.
+         *
+         * @param image The image on which to put the FPS.
+         */
         void putFpsOnImage(cv::Mat &image)
         {
             std::ostringstream oss;
@@ -292,11 +445,21 @@ namespace ComputerVision
             cv::putText(image, oss.str(), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
         }
 
+        /**
+         * @brief Retrieves the frames per second (FPS) of the video.
+         *
+         * @return The frames per second (FPS) as a double value.
+         */
         double getFPS()
         {
             return fps;
         }
 
+        /**
+         * @brief Retrieves the frames of the video.
+         *
+         * @return The frames of the video as a vector of cv::Mat objects.
+         */
         std::vector<cv::Mat> getFrames()
         {
             return frames;
@@ -314,16 +477,52 @@ namespace ComputerVision
         std::string videoPath;
 
     public:
+        /**
+         * @brief Constructs a CameraCalibrator object with the specified board size.
+         *
+         * This constructor initializes a CameraCalibrator object with the specified board size.
+         *
+         * @param boardSize The size of the chessboard used for calibration.
+         */
         CameraCalibrator(cv::Size boardSize) : boardSize(boardSize) {}
+
+        /**
+         * @brief Constructs a CameraCalibrator object with the specified video path.
+         *
+         * This constructor initializes a CameraCalibrator object with the specified video path.
+         *
+         * @param videoPath The path to the video file used for calibration.
+         */
         CameraCalibrator(std::string videoPath) : videoPath(videoPath) {}
+
+        /**
+         * @brief Default constructor for CameraCalibrator.
+         *
+         * This constructor creates a CameraCalibrator object with default parameters.
+         */
         CameraCalibrator() {}
 
-        void loadVideoPath(const std::string &videoPath)
+        /**
+         * @brief Sets the video path for the CameraCalibrator object.
+         *
+         * This function sets the video path for the CameraCalibrator object.
+         *
+         * @param videoPath The path to the video file.
+         */
+        void setVideoPath(const std::string &videoPath)
         {
             this->videoPath = videoPath;
         }
 
-        // ich möchte eine methode, welche mir den pfad des videos einliest und die bilder extrahiert.
+        /**
+         * @brief Loads a video and adds chessboard points for calibration.
+         *
+         * This function loads a video from the specified path and adds chessboard points for calibration.
+         * It retrieves the frames from the video and calls the addChessboardPoints function for each frame.
+         *
+         * @param videoPath The path to the video file.
+         * @param showCalibrationImages Flag indicating whether to show the calibration images.
+         */
         void loadVideoAndAddChessboardPoints(const std::string &videoPath, bool showCalibrationImages)
         {
             Video video(videoPath);
@@ -338,6 +537,15 @@ namespace ComputerVision
             }
         }
 
+        /**
+         * @brief Loads images from a directory and adds chessboard points for calibration.
+         *
+         * This function loads images from the specified directory and adds chessboard points for calibration.
+         * It retrieves the images from the directory and calls the addChessboardPoints function for each image.
+         *
+         * @param imageDirectory The directory containing the images.
+         * @param showCalibrationImages Flag indicating whether to show the calibration images.
+         */
         void loadImagesAndAddChessboardPoints(const std::string &imageDirectory, bool showCalibrationImages)
         {
             std::vector<cv::String> images;
@@ -354,14 +562,18 @@ namespace ComputerVision
                     addChessboardPoints(image, showCalibrationImages);
                 }
             }
-
-            // std::cout << "Number of images: " << imagePoints.size() << std::endl;
-            // std::cout << "cameraMatrix: \n"
-            //           << cameraMatrix << std::endl;
-            // std::cout << "distCoeffs: \n"
-            //           << distCoeffs << std::endl;
         }
 
+        /**
+         * @brief Adds chessboard points for calibration.
+         *
+         * This function adds chessboard points for calibration to the objectPoints and imagePoints vectors.
+         * It detects the chessboard corners in the input image and adds the corresponding 3D and 2D points to the vectors.
+         *
+         * @param image The input image.
+         * @param showCalibrationImages Flag indicating whether to show the calibration images.
+         * @return True if the chessboard is detected in the image, false otherwise.
+         */
         bool addChessboardPoints(const cv::Mat &image, bool showCalibrationImages)
         {
             cv::Mat gray;
@@ -404,24 +616,50 @@ namespace ComputerVision
             return false;
         }
 
+        /**
+         * @brief Calibrates the camera.
+         *
+         * This function calibrates the camera using the objectPoints and imagePoints vectors.
+         * It calculates the camera matrix and distortion coefficients using the calibrateCamera function from OpenCV.
+         * The resulting camera matrix and distortion coefficients are stored in the cameraMatrix and distCoeffs variables.
+         */
         void calibrate()
         {
+            // Calculate the size of the image
             cv::Size imageSize(imagePoints[0].size(), imagePoints.size());
+
+            // Declare variables for rotation and translation vectors
             cv::Mat R, T;
 
+            // Calibrate the camera
             cv::calibrateCamera(objectPoints, imagePoints, imageSize, cameraMatrix, distCoeffs, R, T);
 
+            // Print the camera matrix and distortion coefficients
             std::cout << "Camera Matrix:\n"
                       << cameraMatrix << std::endl;
             std::cout << "Distortion Coefficients:\n"
                       << distCoeffs << std::endl;
         }
 
+        /**
+         * @brief Retrieves the camera matrix.
+         *
+         * This function retrieves the camera matrix used for camera calibration.
+         *
+         * @return The camera matrix as a cv::Mat object.
+         */
         cv::Mat getCameraMatrix() const
         {
             return cameraMatrix;
         }
 
+        /**
+         * @brief Retrieves the distortion coefficients.
+         *
+         * This function retrieves the distortion coefficients used for camera calibration.
+         *
+         * @return The distortion coefficients as a cv::Mat object.
+         */
         cv::Mat getDistCoeffs() const
         {
             return distCoeffs;
@@ -438,8 +676,18 @@ namespace ComputerVision
         std::vector<cv::DMatch> matches;
 
     public:
+        /**
+         * @brief Constructs a Matcher object with the specified training and validation feature extractions.
+         *
+         * This constructor initializes a Matcher object with the specified training and validation feature extractions.
+         * It retrieves the keypoints, descriptors, and images from the training and validation feature extractions.
+         *
+         * @param training The training FeatureExtraction object.
+         * @param validation The validation FeatureExtraction object.
+         */
         Matcher(FeatureExtraction &training, FeatureExtraction &validation)
         {
+            // Retrieve keypoints, descriptors, and images from training and validation feature extractions
             trainingKeypoints = training.getKeypoints();
             validationKeypoints = validation.getKeypoints();
             trainingDescription = training.getDescriptor();
@@ -450,15 +698,34 @@ namespace ComputerVision
 
         ~Matcher() {}
 
+        /**
+         * @brief Matches the features between the training and validation feature extractions.
+         *
+         * This function matches the features between the training and validation feature extractions.
+         * It calls the computeMatches function to compute the matches and assigns the result to the matches vector.
+         *
+         * @return The vector of matches as a vector of cv::DMatch objects.
+         */
         std::vector<cv::DMatch> matchFeatures()
         {
             return matches = computeMatches(trainingDescription, validationDescription);
         }
 
+        /**
+         * @brief Computes the matches between the training and validation feature descriptors.
+         *
+         * This function computes the matches between the training and validation feature descriptors using the BFMatcher.
+         * It sorts the matches based on their distance and returns the sorted matches.
+         *
+         * @param trainingDescription The descriptor of the training feature extraction.
+         * @param validationDescription The descriptor of the validation feature extraction.
+         * @return The vector of matches as a vector of cv::DMatch objects.
+         */
         std::vector<cv::DMatch> computeMatches(const cv::Mat &trainingDescription, const cv::Mat &validationDescription)
         {
             cv::BFMatcher bf(cv::NORM_L2);
 
+            std::vector<cv::DMatch> matches;
             bf.match(trainingDescription, validationDescription, matches);
 
             std::sort(matches.begin(), matches.end(), [](const cv::DMatch &a, const cv::DMatch &b)
@@ -467,6 +734,16 @@ namespace ComputerVision
             return matches;
         }
 
+        /**
+         * @brief Filters the matches based on a distance threshold.
+         *
+         * This function filters the matches based on a distance threshold.
+         * It iterates through each match and checks if its distance is less than the specified threshold.
+         * If the distance is less than the threshold, the match is added to the vector of good matches.
+         *
+         * @param TH The distance threshold.
+         * @return The vector of filtered matches as a vector of cv::DMatch objects.
+         */
         std::vector<cv::DMatch> filterMatches(const double &TH)
         {
             std::vector<cv::DMatch> good_matches;
@@ -482,6 +759,18 @@ namespace ComputerVision
             return good_matches;
         }
 
+        /**
+         * @brief Draws the matches between the training and validation feature extractions.
+         *
+         * This function draws the matches between the training and validation feature extractions.
+         * It takes the vector of matches, the training image, the validation image, and the output image as parameters.
+         * It uses the cv::drawMatches function to draw the matches on the output image.
+         *
+         * @param matches The vector of matches as a vector of cv::DMatch objects.
+         * @param trainingImage The training image.
+         * @param validationImage The validation image.
+         * @param imgMatches The output image where the matches will be drawn.
+         */
         void drawMatches(const std::vector<cv::DMatch> &matches, cv::Mat &imgMatches)
         {
             cv::drawMatches(trainingImage, trainingKeypoints, validationImage, validationKeypoints, matches, imgMatches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
@@ -491,12 +780,43 @@ namespace ComputerVision
     class PoseEstimator
     {
     public:
+        /**
+         * @brief Constructs a PoseEstimator object with the specified camera matrix and distortion coefficients.
+         *
+         * This constructor initializes a PoseEstimator object with the specified camera matrix and distortion coefficients.
+         *
+         * @param cameraMatrix The camera matrix as a cv::Mat object.
+         * @param distCoeffs The distortion coefficients as a cv::Mat object.
+         */
         PoseEstimator(const cv::Mat &cameraMatrix, const cv::Mat &distCoeffs) : cameraMatrix(cameraMatrix), distCoeffs(distCoeffs) {}
+
+        /**
+         * @brief Constructs a PoseEstimator object with the camera calibration.
+         *
+         * This constructor initializes a PoseEstimator object with the camera calibration.
+         * It retrieves the camera matrix and distortion coefficients from the camera calibration object.
+         *
+         * @param cameraCalibration The CameraCalibrator object used for camera calibration.
+         */
         PoseEstimator(ComputerVision::CameraCalibrator cameraCalibration) : cameraMatrix(cameraCalibration.getCameraMatrix()), distCoeffs(cameraCalibration.getDistCoeffs()) {}
 
+        /**
+         * @brief Estimates the pose based on the matches, keypoints, and object points.
+         *
+         * This function estimates the pose based on the matches, keypoints, and object points.
+         * It calculates the image points and selected object points from the matches.
+         * If there are not enough points, it returns false.
+         * It then calls the solvePnP function to estimate the pose using the selected object points and image points.
+         * If the pose estimation fails, it returns false.
+         * Otherwise, it prints the translation and rotation vectors and returns true.
+         *
+         * @param matches The vector of matches as a vector of cv::DMatch objects.
+         * @param keypoints The keypoints from the validation feature extraction.
+         * @param objectPoints The object points used for camera calibration.
+         * @return True if the pose estimation is successful, false otherwise.
+         */
         bool estimatePose(const std::vector<cv::DMatch> &matches,
-                          const std::vector<cv::KeyPoint> &keypoints1,
-                          const std::vector<cv::KeyPoint> &keypoints2,
+                          const std::vector<cv::KeyPoint> &keypoints,
                           const std::vector<cv::Point3f> &objectPoints)
         {
             std::vector<cv::Point2f> imagePoints;
@@ -504,7 +824,7 @@ namespace ComputerVision
 
             for (const auto &match : matches)
             {
-                imagePoints.push_back(keypoints2[match.trainIdx].pt);
+                imagePoints.push_back(keypoints[match.trainIdx].pt);
                 selectedObjectPoints.push_back(objectPoints[match.queryIdx]);
             }
 
@@ -540,13 +860,6 @@ namespace ComputerVision
                 return;
             }
 
-            tvec.at<double>(0) *= 1000; // x-Komponente
-            tvec.at<double>(1) *= 1000; // x-Komponente
-            tvec.at<double>(2) *= 1000; // x-Komponente
-
-            std::cout << "Translation Vector Coordinate:\n"
-                      << tvec << std::endl;
-
             // Zeichnen Sie das Koordinatensystem
             cv::drawFrameAxes(image, cameraMatrix, distCoeffs, rvec, tvec, 100); // 100 ist die Länge der Achsen
 
@@ -561,6 +874,18 @@ namespace ComputerVision
         cv::Mat getTvec()
         {
             return tvec;
+        }
+
+        std::vector<cv::Point2f> extractImagePointsFromKeypoints(const std::vector<cv::KeyPoint> &keypoints)
+        {
+            std::vector<cv::Point2f> imagePoints;
+
+            for (const auto &kp : keypoints)
+            {
+                imagePoints.push_back(kp.pt);
+            }
+
+            return imagePoints;
         }
 
     private:

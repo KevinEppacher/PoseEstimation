@@ -5,36 +5,41 @@
 
 int main(int argc, char **argv)
 {
-    
-    std::string mode = argv[1];
+    std::string mode;
+    if (argc >= 2)
+    {
+        mode = argv[1];
+    }
+    else
+    {
+        mode = "DefaultMode";
+    }
 
-    // Initialize the camera
-    cv::VideoCapture cap(0); // open the default camera, change the index if you have multiple cameras
+    std::string trainingImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png";
+    std::string pathToTrainingKeypoints = "/home/fhtw_user/catkin_ws/src/HW_3/src/PoseEstimation/activeSet.csv";
+    std::string pathToMeasuredKeypoints = "/home/fhtw_user/catkin_ws/src/HW_3/src/PoseEstimation/activeSet_XYZ.csv";
+    std::string videoPath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_video_real.mp4";
+    std::string activeSet_XYZ_Path = "/home/fhtw_user/catkin_ws/src/HW_3/src/PoseEstimation/activeSet_XYZ.csv";
+    std::string imageDirectory = "/home/fhtw_user/catkin_ws/src/HW_3/src/Calibrate/Calibration_Images";
 
-    if (!cap.isOpened()) // check if we succeeded
+    cv::VideoCapture cap(0);
+    if (!cap.isOpened())
     {
         std::cout << "Could not open camera" << std::endl;
         return -1;
     }
 
-    std::string trainingImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png";
     ComputerVision::FeatureExtraction training(trainingImagePath);
-
-    std::string pathToTrainingKeypoints = "/home/fhtw_user/catkin_ws/src/HW_3/src/PoseEstimation/activeSet.csv";
-    std::string pathToMeasuredKeypoints = "/home/fhtw_user/catkin_ws/src/HW_3/src/PoseEstimation/activeSet_XYZ.csv";
 
     training.computeKeypointsAndDescriptors(false);
 
     std::vector<cv::KeyPoint> keypoints1 = training.getKeypoints();
 
-    std::vector<int> filterKeypointsAndDescriptor = {0, 2, 3, 11, 13, 14, 15, 19, 20, 29, 33};
+    std::vector<int> filteredKeypointsAndDescriptor = training.filterKeypointsAndDescriptor(activeSet_XYZ_Path);
 
-    training.filterKeypointsAndDescriptor(filterKeypointsAndDescriptor);
+    training.filterKeypointsAndDescriptor(filteredKeypointsAndDescriptor);
 
-    std::string videoPath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_video_real.mp4";
     ComputerVision::Video video(videoPath);
-
-    std::string activeSet_XYZ_Path = "/home/fhtw_user/catkin_ws/src/HW_3/src/PoseEstimation/activeSet_XYZ.csv";
 
     std::vector<cv::Point3f> worldPoints = LoadXYZCoordinates(activeSet_XYZ_Path);
 
@@ -42,7 +47,6 @@ int main(int argc, char **argv)
 
     ComputerVision::CameraCalibrator camera(boardSize);
 
-    std::string imageDirectory = "/home/fhtw_user/catkin_ws/src/HW_3/src/Calibrate/Calibration_Images";
     camera.loadImagesAndAddChessboardPoints(imageDirectory, false);
 
     camera.calibrate();
@@ -50,49 +54,43 @@ int main(int argc, char **argv)
     ComputerVision::PoseEstimator poseEstimator(camera);
 
     cv::Mat undistortedFrame;
+    cv::Mat outputImage;
+    cv::Mat rvec, tvec;
+    cv::Mat cameraFrame;
 
     if (mode == "Live")
     {
         while (true)
         {
-
-            cv::Mat cameraFrame;
             cap >> cameraFrame;
 
             cv::undistort(cameraFrame, undistortedFrame, camera.getCameraMatrix(), camera.getDistCoeffs());
 
             ComputerVision::FeatureExtraction validation(undistortedFrame);
+
             validation.computeKeypointsAndDescriptors(false);
 
-            cv::Mat outputImage;
             ComputerVision::Matcher matcher(training, validation);
 
             std::vector<cv::DMatch> matches = matcher.matchFeatures();
 
-            std::vector<cv::DMatch> filteredMatches = matcher.filterMatches(250);
+            std::vector<cv::DMatch> filteredMatches = matcher.filterMatches(230);
 
             matcher.drawMatches(filteredMatches, outputImage);
 
             video.putFpsOnImage(outputImage);
 
             std::vector<cv::KeyPoint> keypoints = validation.getKeypoints();
-            std::vector<cv::Point2f> imagePoints;
-
-            for (const auto &kp : keypoints)
+            
+            if (poseEstimator.estimatePose(filteredMatches, validation.getKeypoints(), worldPoints))
             {
-                imagePoints.push_back(kp.pt);
-            }
-
-            cv::Mat rvec, tvec;
-            if (poseEstimator.estimatePose(filteredMatches, training.getKeypoints(), validation.getKeypoints(), worldPoints))
-            {
-                poseEstimator.drawCoordinateSystem(cameraFrame);
+                // poseEstimator.drawCoordinateSystem(cameraFrame);
             }
 
             cv::imshow("Brute Force Matching", outputImage);
-            cv::imshow("Schauma moi", cameraFrame);
+            // cv::imshow("Schauma moi", cameraFrame);
 
-            if (cv::waitKey(1000 / video.getFPS()) == 27) // Esc-Taste beendet die Schleife
+            if (cv::waitKey(1000 / video.getFPS()) == 27)
                 break;
         }
     }
@@ -102,10 +100,10 @@ int main(int argc, char **argv)
         {
             cv::undistort(frame, undistortedFrame, camera.getCameraMatrix(), camera.getDistCoeffs());
 
-            ComputerVision::FeatureExtraction validation(frame);
+            ComputerVision::FeatureExtraction validation(undistortedFrame);
+
             validation.computeKeypointsAndDescriptors(false);
 
-            cv::Mat outputImage;
             ComputerVision::Matcher matcher(training, validation);
 
             std::vector<cv::DMatch> matches = matcher.matchFeatures();
@@ -117,23 +115,16 @@ int main(int argc, char **argv)
             video.putFpsOnImage(outputImage);
 
             std::vector<cv::KeyPoint> keypoints = validation.getKeypoints();
-            std::vector<cv::Point2f> imagePoints;
-
-            for (const auto &kp : keypoints)
+            
+            if (poseEstimator.estimatePose(filteredMatches, validation.getKeypoints(), worldPoints))
             {
-                imagePoints.push_back(kp.pt);
-            }
-
-            cv::Mat rvec, tvec;
-            if (poseEstimator.estimatePose(filteredMatches, training.getKeypoints(), validation.getKeypoints(), worldPoints))
-            {
-                poseEstimator.drawCoordinateSystem(frame);
+                // poseEstimator.drawCoordinateSystem(frame);
             }
 
             cv::imshow("Brute Force Matching", outputImage);
-            cv::imshow("Schauma moi", frame);
+            // cv::imshow("Schauma moi", frame);
 
-            if (cv::waitKey(1000 / video.getFPS()) == 27) // Esc-Taste beendet die Schleife
+            if (cv::waitKey(1000 / video.getFPS()) == 27)
                 break;
         }
     }
