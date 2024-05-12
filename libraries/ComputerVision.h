@@ -176,7 +176,7 @@ namespace ComputerVision
                     }
                 }
 
-                cv::imwrite("sift_result.jpg", outputImage);
+                // cv::imwrite("sift_result.jpg", outputImage);
 
                 saveKeypointsToCSV("activeSet.csv", keypoints);
 
