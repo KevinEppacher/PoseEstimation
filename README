@@ -1,0 +1,12 @@
+https://github.com/KevinEppacher/PoseEstimation/tree/master
+
+git@github.com:KevinEppacher/PoseEstimation.git
+
+Usage:
+  cd /home/fhtw_user/catkin_ws/src/HW_3/src/PoseEstimation
+
+  make clean_all
+
+  ./estimate_pose # empfohlen mit gespeicherteten Video
+
+  ./estimate_pose Live # Mit einem Live Video an port 0
