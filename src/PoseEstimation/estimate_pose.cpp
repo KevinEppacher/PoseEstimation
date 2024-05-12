@@ -14,6 +14,7 @@ int main(int argc, char **argv)
     {
         mode = "DefaultMode";
     }
+    
 
     std::string trainingImagePath = "/home/fhtw_user/catkin_ws/src/HW_3/data/simpson_image.png";
     std::string pathToTrainingKeypoints = "/home/fhtw_user/catkin_ws/src/HW_3/src/PoseEstimation/activeSet.csv";
